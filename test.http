@@ -1,0 +1,46 @@
+POST http://localhost:8081/api/user/v1/register
+Content-Type: application/json
+
+{
+    "full_name": "Fatkhurrohman",
+    "email": "fatkhuranonym@gmail.com",
+    "phone_num": "085225520622"
+}
+
+###
+POST http://localhost:8081/api/user/v1/activate
+Content-Type: application/json
+
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM1NDIyMDcsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.pjmc58thKKF8762e-2tPz77zcDPvCzv4yksqd5Rq3bI",
+    "passhash": "123123"
+}
+
+###
+POST http://localhost:8081/api/auth/v1/authorize
+Content-Type: application/json
+
+{"email": "fatkhuranonym@gmail.com","passhash": "123123"}
+
+###
+POST http://localhost:8081/auth/v1/unauthorize
+Content-Type: application/json
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM1MTg3NzYsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.D-Tb3m6TSSMiouS4B4nmWiMAfAzKKOGoNliCHGArrsE
+
+
+###
+GET http://localhost:8081/api/user/v1/me/info
+Content-Type: application/json
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM1MTg4ODAsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.nsqszmK3ha9D_7SXGw1_1bev01AgKqJ1ri5x8XwR-tY
+
+
+###
+POST http://localhost:8081/api/user/v1/me/info
+Content-Type: application/json
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM1MTg4ODAsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.nsqszmK3ha9D_7SXGw1_1bev01AgKqJ1ri5x8XwR-tY
+
+{
+    "full_name": "FatkhurAnonym",
+    "email": "fatkhuranonym@gmail.com",
+    "phone_num": "085225520622"
+}
