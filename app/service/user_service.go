@@ -68,7 +68,7 @@ func NewUserService(db *gorm.DB) UserService {
 // @Param full_name body string true "FullName"
 // @Param email body string true "Email"
 // @Param phone_num body string true "PhoneNum"
-// @Success 200 {string} string
+// @Success 200 {object} app.Result{result=service.RegisterToken}
 // @Failure 400 {object} app.Result
 // @Router /register [post]
 func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
@@ -103,7 +103,7 @@ func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
 	}
 
 	// return token-nya apabila email sudah terdaftar
-	APIResult.Success(c, &registerModel.Token)
+	APIResult.Success(c, &RegisterToken{Token: registerModel.Token})
 }
 
 // ActivateUser docs
@@ -113,7 +113,7 @@ func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
 // @Produce json
 // @Param token body string true "Token"
 // @Param passhash body string true "Passhash"
-// @Success 200 {object} models.User
+// @Success 200 {object} app.Result{result=models.User}
 // @Failure 400 {object} app.Result
 // @Router /activate [post]
 func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
@@ -175,7 +175,7 @@ func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
 // @Summary Endpoint untuk informasi user
 // @Security bearerAuth
 // @Produce json
-// @Success 200 {object} models.User
+// @Success 200 {object} app.Result{result=models.User}
 // @Failure 401 {object} app.Result
 // @Router /me/info [get] [auth]
 func (s *UserServiceImpl) MeInfo(c *gin.Context) {
@@ -193,7 +193,7 @@ func (s *UserServiceImpl) MeInfo(c *gin.Context) {
 // @Param phone_num body string true "PhoneNum"
 // @Param address body string false "Address"
 // @Param avatar body string false "Avatar"
-// @Success 200 {object} models.User
+// @Success 200 {object} app.Result{result=models.User}
 // @Failure 400 {object} app.Result
 // @Failure 401 {object} app.Result
 // @Router /me/info [post] [auth]
@@ -219,5 +219,5 @@ func (s *UserServiceImpl) UpdateUserInfo(c *gin.Context) {
 		models.UserDBSchema.Avatar,
 	)
 
-	APIResult.Success(c, mid.CurrentUser)
+	APIResult.Success(c, &mid.CurrentUser)
 }

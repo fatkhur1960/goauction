@@ -42,6 +42,11 @@ definitions:
       type:
         type: integer
     type: object
+  service.RegisterToken:
+    properties:
+      token:
+        type: string
+    type: object
 info:
   contact: {}
   description: Backend lelah online
@@ -75,7 +80,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.User'
+              type: object
         "400":
           description: Bad Request
           schema:
@@ -106,7 +116,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AccessToken'
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.AccessToken'
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -122,7 +137,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.User'
+              type: object
         "401":
           description: Unauthorized
           schema:
@@ -170,7 +190,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.User'
+              type: object
         "400":
           description: Bad Request
           schema:
@@ -213,7 +238,12 @@ paths:
         "200":
           description: OK
           schema:
-            type: string
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/service.RegisterToken'
+              type: object
         "400":
           description: Bad Request
           schema:
@@ -234,6 +264,10 @@ paths:
             $ref: '#/definitions/app.Result'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/app.Result'
       security:

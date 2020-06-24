@@ -23,7 +23,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 
 		// Generate route for AuthService
 		authService := service.NewAuthService(models.DB)
-		authServiceGroup := apiGroup.Group(" /auth/v1")
+		authServiceGroup := apiGroup.Group("/auth/v1")
 		{
 			authServiceGroup.POST("/authorize", authService.AuthorizeUser)
 			authServiceGroup.POST("/unauthorize", mid.RequiresUserAuth, authService.UnauthorizeUser)
@@ -31,7 +31,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 
 		// Generate route for UserService
 		userService := service.NewUserService(models.DB)
-		userServiceGroup := apiGroup.Group(" /user/v1")
+		userServiceGroup := apiGroup.Group("/user/v1")
 		{
 			userServiceGroup.POST("/register", userService.RegisterUser)
 			userServiceGroup.POST("/activate", userService.ActivateUser)

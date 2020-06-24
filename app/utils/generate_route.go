@@ -33,7 +33,8 @@ type (
 )
 
 func parseGroup(input string) string {
-	return input[len("@RouterBase "):]
+	path := input[len("@RouterGroup "):]
+	return strings.TrimSpace(path)
 }
 
 func parseEndpoint(name string, input string) APIEndpoint {
@@ -57,7 +58,7 @@ func parseEndpoint(name string, input string) APIEndpoint {
 
 		// find path
 		if strings.HasPrefix(v, "/") {
-			path = v
+			path = strings.TrimSpace(v)
 		}
 	}
 

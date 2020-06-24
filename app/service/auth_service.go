@@ -49,7 +49,7 @@ func NewAuthService(db *gorm.DB) AuthService {
 // @Produce  json
 // @Param email body string true "Email"
 // @Param passhash body string true "Passhash"
-// @Success 200 {object} models.AccessToken
+// @Success 200 {object} app.Result{result=models.AccessToken}
 // @Failure 500 {object} app.Result
 // @Router /authorize [post]
 func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
@@ -96,6 +96,7 @@ func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} app.Result
 // @Failure 400 {object} app.Result
+// @Failure 401 {object} app.Result
 // @Router /unauthorize [post] [auth]
 func (s *AuthServiceImpl) UnauthorizeUser(c *gin.Context) {
 	err := s.tokenRepo.UserIDEq(mid.CurrentUser.ID).Delete()
