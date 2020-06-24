@@ -7,6 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type (
+	// RegisterToken result after user register
+	RegisterToken struct {
+		Token string `json:"token"`
+	}
+)
+
 // APIResult for json output
 var APIResult = app.NewAPIResult()
 

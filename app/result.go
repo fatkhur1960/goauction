@@ -54,5 +54,5 @@ func (r *Result) Error(c *gin.Context, code int, description string) {
 	data, _ := json.Marshal(r)
 
 	json.Unmarshal(data, &output)
-	c.JSON(http.StatusOK, output)
+	c.JSON(code, output)
 }
