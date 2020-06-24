@@ -51,7 +51,7 @@ type (
 )
 
 // NewUserService instance for UserService
-// api_group base=/user/v1
+// @RouterGroup /user/v1
 func NewUserService(db *gorm.DB) UserService {
 	return &UserServiceImpl{
 		userRepo:     models.NewUserQuerySet(db),
@@ -60,8 +60,17 @@ func NewUserService(db *gorm.DB) UserService {
 	}
 }
 
-// RegisterUser implementation
-// api_endpoint path=/register auth=false method=POST
+// RegisterUser docs
+// @Tags UserService
+// @Summary Endpoint untuk register user
+// @Accept json
+// @Produce json
+// @Param full_name body string true "FullName"
+// @Param email body string true "Email"
+// @Param phone_num body string true "PhoneNum"
+// @Success 200 {string} string
+// @Failure 400 {object} app.Result
+// @Router /register [post]
 func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
 	query := RegisterUserQuery{}
 	registerModel := models.RegisterUser{}
@@ -74,7 +83,7 @@ func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
 	// cek apakah email sudah ada sebagai user
 	count, _ := s.userRepo.EmailEq(query.Email).Count()
 	if count > 0 {
-		APIResult.Error(c, http.StatusAlreadyReported, "Email sudah terdaftar")
+		APIResult.Error(c, http.StatusBadRequest, "Email sudah terdaftar")
 		return
 	}
 
@@ -97,8 +106,16 @@ func (s *UserServiceImpl) RegisterUser(c *gin.Context) {
 	APIResult.Success(c, &registerModel.Token)
 }
 
-// ActivateUser method untuk mengaktifkan user
-// api_endpoint path=/activate auth=false method=POST
+// ActivateUser docs
+// @Tags UserService
+// @Summary Endpoint untuk mengaktifkan user
+// @Accept json
+// @Produce json
+// @Param token body string true "Token"
+// @Param passhash body string true "Passhash"
+// @Success 200 {object} models.User
+// @Failure 400 {object} app.Result
+// @Router /activate [post]
 func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
 	query := ActivateUserQuery{}
 	registerModel := models.RegisterUser{}
@@ -119,7 +136,7 @@ func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
 	// cek apakah email sudah ada sebagai user
 	count, _ := s.userRepo.EmailEq(registerModel.Email).Count()
 	if count > 0 {
-		APIResult.Error(c, http.StatusAlreadyReported, "Email sudah terdaftar")
+		APIResult.Error(c, http.StatusBadRequest, "Email sudah terdaftar")
 		return
 	}
 
@@ -134,7 +151,7 @@ func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
 	}
 	resUser, err := user.CreateUser()
 	if err != nil {
-		APIResult.Error(c, http.StatusExpectationFailed, "Tidak dapat mengaktifkan user")
+		APIResult.Error(c, http.StatusBadRequest, "Tidak dapat mengaktifkan user")
 		return
 	}
 
@@ -153,14 +170,33 @@ func (s *UserServiceImpl) ActivateUser(c *gin.Context) {
 	APIResult.Success(c, &resUser)
 }
 
-// MeInfo method untuk mendapatkan current user
-// api_endpoint path=/me/info auth=true method=GET
+// MeInfo docs
+// @Tags UserService
+// @Summary Endpoint untuk informasi user
+// @Security bearerAuth
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 401 {object} app.Result
+// @Router /me/info [get] [auth]
 func (s *UserServiceImpl) MeInfo(c *gin.Context) {
 	APIResult.Success(c, mid.CurrentUser)
 }
 
-// UpdateUserInfo method untuk mengupdate informasi user
-// api_endpoint path=/me/info auth=true method=POST
+// UpdateUserInfo docs
+// @Tags UserService
+// @Summary Endpoint untuk mengupdate informasi user
+// @Security bearerAuth
+// @Accept json
+// @Produce json
+// @Param full_name body string true "FullName"
+// @Param email body string true "Email"
+// @Param phone_num body string true "PhoneNum"
+// @Param address body string false "Address"
+// @Param avatar body string false "Avatar"
+// @Success 200 {object} models.User
+// @Failure 400 {object} app.Result
+// @Failure 401 {object} app.Result
+// @Router /me/info [post] [auth]
 func (s *UserServiceImpl) UpdateUserInfo(c *gin.Context) {
 	query := UpdateUserQuery{}
 

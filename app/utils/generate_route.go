@@ -7,11 +7,9 @@ import (
 	"go/token"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -35,22 +33,39 @@ type (
 )
 
 func parseGroup(input string) string {
-	args, _ := url.ParseQuery(strings.ReplaceAll(input, " ", "&"))
-	return args.Get("base")
+	return input[len("@RouterBase "):]
 }
 
 func parseEndpoint(name string, input string) APIEndpoint {
-	args, _ := url.ParseQuery(strings.ReplaceAll(input, " ", "&"))
-	auth, err := strconv.ParseBool(args.Get("auth"))
-	if err != nil {
-		panic(err.Error())
+	reMethods := regexp.MustCompile(`get|post|delete|put|patch`)
+	args := strings.Split(input[len("@Router "):], " ")
+
+	var path string
+	var method string
+	var auth = false
+
+	for _, v := range args {
+		// find methods
+		if reMethods.FindString(v) != "" {
+			method = strings.ToUpper(reMethods.FindString(v))
+		}
+
+		// find auth is enabled
+		if v == "[auth]" {
+			auth = true
+		}
+
+		// find path
+		if strings.HasPrefix(v, "/") {
+			path = v
+		}
 	}
 
 	return APIEndpoint{
 		Name:   name,
-		Path:   args.Get("path"),
+		Path:   path,
 		Auth:   auth,
-		Method: args.Get("method"),
+		Method: method,
 	}
 }
 
@@ -76,8 +91,8 @@ func readEndpoints() []APIGroup {
 
 		var routeGroup APIGroup
 
-		reEnd := regexp.MustCompile(`api_endpoint.+`)
-		reGroup := regexp.MustCompile(`api_group.+`)
+		reEnd := regexp.MustCompile(`@Router.+`)
+		reGroup := regexp.MustCompile(`@RouterGroup.+`)
 
 		comments := []*ast.CommentGroup{}
 		ast.Inspect(node, func(n ast.Node) bool {

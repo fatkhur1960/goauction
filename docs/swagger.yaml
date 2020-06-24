@@ -1,0 +1,249 @@
+definitions:
+  app.Result:
+    properties:
+      code:
+        type: integer
+      description:
+        type: string
+      result:
+        type: object
+    type: object
+  models.AccessToken:
+    properties:
+      created:
+        type: string
+      token:
+        type: string
+      user_id:
+        type: integer
+      valid_thru:
+        type: string
+    type: object
+  models.User:
+    properties:
+      active:
+        type: boolean
+      address:
+        type: string
+      avatar:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      last_login:
+        type: string
+      phone_num:
+        type: string
+      registered_at:
+        type: string
+      type:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Backend lelah online
+  license:
+    name: GNU
+    url: https://github.com/fatkhur1960/goauction/blob/master/LICENSE
+  termsOfService: https://github.com/fatkhur1960/goauction
+  title: GoAuction API
+  version: "1.0"
+paths:
+  /activate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Token
+        in: body
+        name: token
+        required: true
+        schema:
+          type: string
+      - description: Passhash
+        in: body
+        name: passhash
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      summary: Endpoint untuk mengaktifkan user
+      tags:
+      - UserService
+  /authorize:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: Passhash
+        in: body
+        name: passhash
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AccessToken'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.Result'
+      summary: Endpoint untuk melakukan otorisasi
+      tags:
+      - AuthService
+  /me/info:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk informasi user
+      tags:
+      - UserService
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: FullName
+        in: body
+        name: full_name
+        required: true
+        schema:
+          type: string
+      - description: Email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: PhoneNum
+        in: body
+        name: phone_num
+        required: true
+        schema:
+          type: string
+      - description: Address
+        in: body
+        name: address
+        schema:
+          type: string
+      - description: Avatar
+        in: body
+        name: avatar
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mengupdate informasi user
+      tags:
+      - UserService
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: FullName
+        in: body
+        name: full_name
+        required: true
+        schema:
+          type: string
+      - description: Email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: PhoneNum
+        in: body
+        name: phone_num
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      summary: Endpoint untuk register user
+      tags:
+      - UserService
+  /unauthorize:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.Result'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menghapus otorisasi
+      tags:
+      - AuthService
+securityDefinitions:
+  bearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
