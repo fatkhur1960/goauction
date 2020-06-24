@@ -14,13 +14,14 @@ import (
 // CurrentUser global variable for authenticated user
 var CurrentUser models.User
 
-// AccessToken global variable for authenticated user
-var AccessToken models.AccessToken
-
 // RequiresUserAuth middleware
 func RequiresUserAuth(c *gin.Context) {
+	const bearerScheme = "Bearer "
+	authHeader := c.GetHeader("Authorization")
+	tokenString := authHeader[len(bearerScheme):]
+
 	apiResult := app.NewAPIResult()
-	tokenString := c.Request.Header.Get("Authorization")
+	accessToken := models.AccessToken{}
 
 	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//Make sure that the token method conform to "SigningMethodHMAC"
@@ -33,13 +34,13 @@ func RequiresUserAuth(c *gin.Context) {
 	if err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Invalid Access Token")
 		c.Abort()
-	} else if err := models.NewAccessTokenQuerySet(models.DB).TokenEq(tokenString).One(&AccessToken); err != nil {
+	} else if err := models.NewAccessTokenQuerySet(models.DB).TokenEq(tokenString).One(&accessToken); err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Unauthorized")
 		c.Abort()
-	} else if AccessToken.IsExpired() {
+	} else if accessToken.IsExpired() {
 		apiResult.Error(c, http.StatusUnauthorized, "Access Token Expired")
 		c.Abort()
 	}
 
-	models.NewUserQuerySet(models.DB).IDEq(AccessToken.UserID).One(&CurrentUser)
+	models.NewUserQuerySet(models.DB).IDEq(accessToken.UserID).One(&CurrentUser)
 }

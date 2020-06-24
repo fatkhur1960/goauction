@@ -37,6 +37,7 @@ func (r *Result) Success(c *gin.Context, res interface{}) {
 
 	r.Code = 0
 	r.Result = res
+	r.Description = ""
 	data, _ := json.Marshal(r)
 
 	json.Unmarshal(data, &output)
@@ -49,6 +50,7 @@ func (r *Result) Error(c *gin.Context, code int, description string) {
 
 	r.Code = code
 	r.Description = description
+	r.Result = nil
 	data, _ := json.Marshal(r)
 
 	json.Unmarshal(data, &output)

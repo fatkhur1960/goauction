@@ -7,7 +7,7 @@ UNIT_TEST_PACKAGES=$(shell  go list ./... | grep -v "vendor")
 
 APP_EXECUTABLE="./out/$(APP)_server"
 
-setup:
+prepare:
 	go get -u github.com/dgrijalva/jwt-go
 	go get -u github.com/gin-gonic/gin
 	go get -u github.com/iancoleman/strcase
@@ -17,31 +17,32 @@ setup:
 	go get -u golang.org/x/lint/golint
 	go get -u github.com/axw/gocov/gocov
 	go get -u gopkg.in/matm/v1/gocov-html
+	go get -u github.com/swaggo/swag/cmd/swag
 	go get -u github.com/rubenv/sql-migrate/...
 
-db.setup: db.create db.migrate
+db-setup: db-create db-migrate
 
-db.create:
+db-create:
 	createdb -O$(DB_USER) -Eutf8 $(DB_NAME)
 
-db.migrate:
+db-migrate:
 	sql-migrate up -env="$(APP_ENV)"
 
-db.drop:
+db-drop:
 	dropdb --if-exists -U$(DB_USER) $(DB_NAME)
 
-db.reset: db.drop db.create db.migrate
+db-reset: db-drop db-create db-migrate
 
-testdb.migrate:
+testdb-migrate:
 	sql-migrate up -env="test"
 
-testdb.create: testdb.drop
+testdb-create: testdb-drop
 	createdb -O$(DB_USER) -Eutf8 $(DB_NAME_TEST)
 
-testdb.drop:
+testdb-drop:
 	dropdb --if-exists -U$(DB_USER) $(DB_NAME_TEST)
 
-testdb.reset: testdb.drop testdb.create testdb.migrate
+testdb-reset: testdb-drop testdb-create testdb-migrate
 
 build-deps:
 	dep ensure -v
@@ -79,9 +80,12 @@ run-dev:
 run:
 	GIN_MODE=release go run ${APP}.go
 
+api-docs:
+	swag init -g goauction.go
+
 copy-config:
 	cp .env.example .env
 
 clean:
-	rm -rf ./out/
+	rm -rf ./out/ ./docs
 

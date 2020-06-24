@@ -33,7 +33,7 @@ type (
 )
 
 // NewAuthService create new instance
-// api_group base=/auth/v1
+// @RouterGroup /auth/v1
 func NewAuthService(db *gorm.DB) AuthService {
 	return &AuthServiceImpl{
 		userRepo:     models.NewUserQuerySet(db),
@@ -42,8 +42,16 @@ func NewAuthService(db *gorm.DB) AuthService {
 	}
 }
 
-// AuthorizeUser method untuk otorisasi user
-// api_endpoint path=/authorize auth=false method=POST
+// AuthorizeUser docs
+// @Summary Endpoint untuk melakukan otorisasi
+// @Tags AuthService
+// @Accept json
+// @Produce  json
+// @Param email body string true "Email"
+// @Param passhash body string true "Passhash"
+// @Success 200 {object} models.AccessToken
+// @Failure 500 {object} app.Result
+// @Router /authorize [post]
 func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
 	var query AuthQuery
 	var user models.User
@@ -80,10 +88,17 @@ func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
 	APIResult.Success(c, resToken)
 }
 
-// UnauthorizeUser method untuk menghapus otorisasi user
-// api_endpoint path=/unauthorize auth=true method=POST
+// UnauthorizeUser docs
+// @Summary Endpoint untuk menghapus otorisasi
+// @Tags AuthService
+// @Security bearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} app.Result
+// @Failure 400 {object} app.Result
+// @Router /unauthorize [post] [auth]
 func (s *AuthServiceImpl) UnauthorizeUser(c *gin.Context) {
-	err := mid.AccessToken.Delete(models.DB)
+	err := s.tokenRepo.UserIDEq(mid.CurrentUser.ID).Delete()
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
