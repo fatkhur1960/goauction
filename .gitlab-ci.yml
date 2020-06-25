@@ -2,7 +2,6 @@
 image: alpine:latest
 services:
   - postgres:latest
-  - node:latest
   - golang:latest
 
 
@@ -36,8 +35,7 @@ before_script:
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - pwd
-  - make migrate-init
+  - cat dbconfig.yml.example > dbconfig.yml
 
 stages:
   - test
@@ -46,8 +44,11 @@ stages:
 
 test:
   stage: test
+  before_script:
+    - dropdb --if-exists -U$DB_USER $DB_NAME
+    - createdb -O$DB_USER -Eutf8 $DB_NAME
+    - sql-migrate up -env="test"
   script:
-    - make testdb-reset
     - go fmt $(go list ./... | grep -v /vendor/)
     - go vet $(go list ./... | grep -v /vendor/)
     - go test -race $(go list ./... | grep -v /vendor/) -p=1
@@ -55,8 +56,8 @@ test:
 build:
   stage: build
   script:
-    - make db-reset 
-    - make compile
+    - mkdir $CI_PROJECT_DIR/out
+    - go build -race -ldflags "-extldflags '-static'" ./out/$CI_PROJECT_NAME
   artifacts:
     paths:
-      - $CI_PROJECT_DIR
+      - $CI_PROJECT_DIR/out
