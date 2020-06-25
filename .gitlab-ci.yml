@@ -1,9 +1,14 @@
 # This file is a template, and might need editing before it works on your project.
-image: golang:latest
+image: ubuntu:latest
 
 variables:
   # Please edit to your GitLab project
-  REPO_NAME: gitlab.com/namespace/project
+  REPO_NAME: github.com/fatkhur1960/goauction
+  DB_HOST: localhost
+  DB_USER: postgres
+  DB_NAME: ${CI_PROJECT_NAME}_db
+  DB_NAME_TEST: ${CI_PROJECT_NAME}_db_test
+  SSL_MODE: disable
 
 # The problem is that to be able to use go get, one needs to put
 # the repository in the $GOPATH. So for example if your gitlab domain
@@ -12,6 +17,17 @@ variables:
 # repository in /go/src/gitlab.com/namespace/project
 # Thus, making a symbolic link corrects this.
 before_script:
+  - apt install wget
+  - sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+  - apt update && apt install postgresql
+  - systemctl start postgresql
+  - systemctl enable postgresql
+  - VERSION=$(curl -g https://golang.org/VERSION?m=text)
+  - wget "https://dl.google.com/go/$VERSION.linux-amd64.tar.gz"
+  - tar -C /usr/local -xzf $VERSION.linux-amd64.tar.gz
+  - export PATH=$PATH:/usr/local/go/bin
+  - export GOPATH=$HOME/go
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
@@ -21,17 +37,19 @@ stages:
   - build
   - deploy
 
-format:
+test:
   stage: test
   script:
+    - make testdb-reset
     - go fmt $(go list ./... | grep -v /vendor/)
     - go vet $(go list ./... | grep -v /vendor/)
     - go test -race $(go list ./... | grep -v /vendor/) -p=1
 
-compile:
+build:
   stage: build
   script:
-    - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/mybinary
+    - make db-reset 
+    - make compile
   artifacts:
     paths:
-      - mybinary
+      - $CI_PROJECT_DIR
