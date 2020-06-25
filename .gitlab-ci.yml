@@ -1,5 +1,10 @@
 # This file is a template, and might need editing before it works on your project.
-image: ubuntu:latest
+image: alpine:latest
+services:
+  - postgres:latest
+  - node:latest
+  - golang:latest
+
 
 variables:
   # Please edit to your GitLab project
@@ -17,20 +22,22 @@ variables:
 # repository in /go/src/gitlab.com/namespace/project
 # Thus, making a symbolic link corrects this.
 before_script:
-  - apt install wget
-  - sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-  - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-  - apt update && apt install postgresql
-  - systemctl start postgresql
-  - systemctl enable postgresql
-  - VERSION=$(curl -g https://golang.org/VERSION?m=text)
-  - wget "https://dl.google.com/go/$VERSION.linux-amd64.tar.gz"
-  - tar -C /usr/local -xzf $VERSION.linux-amd64.tar.gz
-  - export PATH=$PATH:/usr/local/go/bin
-  - export GOPATH=$HOME/go
+  # - apt install wget
+  # - sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  # - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+  # - apt update && apt install postgresql
+  # - systemctl start postgresql
+  # - systemctl enable postgresql
+  # - VERSION=$(curl -g https://golang.org/VERSION?m=text)
+  # - wget "https://dl.google.com/go/$VERSION.linux-amd64.tar.gz"
+  # - tar -C /usr/local -xzf $VERSION.linux-amd64.tar.gz
+  # - export PATH=$PATH:/usr/local/go/bin
+  # - export GOPATH=$HOME/go
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
+  - pwd
+  - make migrate-init
 
 stages:
   - test
