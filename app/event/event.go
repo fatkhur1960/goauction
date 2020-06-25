@@ -3,43 +3,33 @@ package event
 import (
 	"fmt"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/gin-gonic/gin"
 )
 
-type (
-	// Event base event
-	Event interface {
-		Send(pid int, e interface{})
-	}
-
-	// EventImpl struct for event implementation
-	EventImpl struct {}
-
-	// UserRegistered event when user register
-	UserRegistered struct {
-		FullName string
-		Email    string
-		Token    string
-	}
-
-	// SetBehaviorActor base behavior
-	SetBehaviorActor struct{}
-)
-
-// Receive events
-func (state *SetBehaviorActor) Receive(context actor.Context) {
-	switch e := context.Message().(type) {
-	case UserRegistered:
-		fmt.Printf("Hello %v\n", e.FullName)
-	}
+// RegisterEvents list of available event register
+func RegisterEvents(c *gin.Context) {
+	Listener.Register(&StartupEvent{})
+	Listener.Register(&UserRegisteredPayload{})
+	c.Next()
 }
 
-// NewSetBehaviorActor create instance
-func NewSetBehaviorActor() actor.Actor {
-    return &SetBehaviorActor{}
+// StartupEvent --
+type StartupEvent struct{}
+
+// Handle startup event
+func (e *StartupEvent) Handle(p interface{}) {
+	// TODO: Create something here where server started
 }
 
-// NewEvent create instance
-func NewEvent() Event {
-	return &EventImpl{}
+// UserRegisteredPayload is the data for when a user is created
+type UserRegisteredPayload struct {
+	FullName string
+	Email    string
+	PhoneNum string
+	Token    string
+}
+
+// Handle event user registered
+func (e *UserRegisteredPayload) Handle(p interface{}) {
+	fmt.Println(p.(*UserRegisteredPayload).Email, " Registered")
 }

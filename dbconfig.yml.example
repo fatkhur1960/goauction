@@ -1,11 +1,11 @@
 development:
     dialect: postgres
-    datasource: host=${DB_HOST} dbname=${DB_NAME} user=${DB_USER} password=${DB_PASSWORD} sslmode=${SSL_MODE}
+    datasource: host=${DB_HOST} port=${DB_PORT} sslmode=${SSL_MODE} dbname=${DB_NAME} user=${DB_USER} password=${DB_PASSWORD}
     dir: migrations/postgres
     table: migrations
 
 test:
     dialect: postgres
-    datasource: host=${DB_HOST} dbname=${DB_NAME_TEST} user=${DB_USER} password=${DB_PASSWORD} sslmode=${SSL_MODE}
+    datasource: host=${DB_HOST} port=${DB_PORT} sslmode=${SSL_MODE} dbname=${DB_NAME_TEST} user=${DB_USER} password=${DB_PASSWORD}
     dir: migrations/postgres
     table: migrations

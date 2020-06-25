@@ -20,6 +20,12 @@ prepare:
 	go get -u github.com/swaggo/swag/cmd/swag
 	go get -u github.com/rubenv/sql-migrate/...
 
+migrate-init:
+	cat dbconfig.yml.example > dbconfig.yml
+
+migrate-new:
+	sql-migrate new -env="development" $(name)
+
 db-setup: db-create db-migrate
 
 db-create:
@@ -72,7 +78,7 @@ lint:
 	done
 
 test:
-	ENVIRONMENT=test go test -v $(UNIT_TEST_PACKAGES) -p=1
+	go test -v ./tests -p=1
 
 run-dev: 
 	go run ${APP}.go

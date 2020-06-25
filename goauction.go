@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
+
+	"github.com/fatkhur1960/goauction/app/event"
 	"github.com/fatkhur1960/goauction/app/models"
 	"github.com/fatkhur1960/goauction/app/router"
 	"github.com/fatkhur1960/goauction/app/utils"
@@ -25,12 +29,27 @@ func main() {
 	docs.SwaggerInfo.Host = "localhost:8081"
 	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 
-	// generating routes
-	utils.GenerateRoutes()
+	gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, _ int) {
+		log.SetPrefix("[")
+		log.Printf("%v] + endpoint %v %v\n", utils.ReplacePackages(handlerName), httpMethod, absolutePath)
+	}
+
 	// connect with database
 	models.ConnectDatabase()
-	// generate app route
-	app := router.GetGeneratedRoutes(gin.Default())
-	defer models.DB.Close()
-	app.Run(docs.SwaggerInfo.Host)
+
+	// generating routes
+	if err := utils.GenerateRoutes(); err == nil {
+		// generate app route
+		app := router.GetGeneratedRoutes(gin.New())
+
+		// register event listener
+		app.Use(event.RegisterEvents)
+
+		defer models.DB.Close()
+		// emmit startup event
+		event.Listener.Emmit(&event.StartupEvent{})
+		app.Run(docs.SwaggerInfo.Host)
+	} else {
+		fmt.Println("RouteGenerator error: " + err.Error())
+	}
 }
