@@ -1,18 +1,20 @@
 # This file is a template, and might need editing before it works on your project.
-image: alpine:latest
-services:
-  - postgres:latest
-  - golang:latest
+image: golang:latest
+# services:
+#   - golang:latest
 
 
 variables:
   # Please edit to your GitLab project
   REPO_NAME: github.com/fatkhur1960/goauction
-  DB_HOST: localhost
-  DB_USER: postgres
+  DB_HOST: ruby.db.elephantsql.com
+  DB_USER: yptqnrts
+  DB_PORT: 5432
   DB_NAME: ${CI_PROJECT_NAME}_db
-  DB_NAME_TEST: ${CI_PROJECT_NAME}_db_test
+  DB_NAME_TEST: yptqnrts
+  DB_PASSWORD: FB_An4UeWqsqurQsbfFtmxXexqSKLLVD
   SSL_MODE: disable
+  TEST_LOG: debug
 
 # The problem is that to be able to use go get, one needs to put
 # the repository in the $GOPATH. So for example if your gitlab domain
@@ -21,17 +23,6 @@ variables:
 # repository in /go/src/gitlab.com/namespace/project
 # Thus, making a symbolic link corrects this.
 before_script:
-  # - apt install wget
-  # - sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-  # - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-  # - apt update && apt install postgresql
-  # - systemctl start postgresql
-  # - systemctl enable postgresql
-  # - VERSION=$(curl -g https://golang.org/VERSION?m=text)
-  # - wget "https://dl.google.com/go/$VERSION.linux-amd64.tar.gz"
-  # - tar -C /usr/local -xzf $VERSION.linux-amd64.tar.gz
-  # - export PATH=$PATH:/usr/local/go/bin
-  # - export GOPATH=$HOME/go
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
@@ -44,20 +35,19 @@ stages:
 
 test:
   stage: test
-  before_script:
-    - dropdb --if-exists -U$DB_USER $DB_NAME
-    - createdb -O$DB_USER -Eutf8 $DB_NAME
-    - sql-migrate up -env="test"
   script:
+    - go get -v github.com/rubenv/sql-migrate/...
     - go fmt $(go list ./... | grep -v /vendor/)
     - go vet $(go list ./... | grep -v /vendor/)
-    - go test -race $(go list ./... | grep -v /vendor/) -p=1
+    - sql-migrate down -env="test"
+    - sql-migrate up -env="test"
+    - go test -v $(go list ./... | grep -v /vendor/) -p=1
 
 build:
   stage: build
   script:
     - mkdir $CI_PROJECT_DIR/out
-    - go build -race -ldflags "-extldflags '-static'" ./out/$CI_PROJECT_NAME
+    - go build -o $CI_PROJECT_DIR/out/$CI_PROJECT_NAME
   artifacts:
     paths:
       - $CI_PROJECT_DIR/out

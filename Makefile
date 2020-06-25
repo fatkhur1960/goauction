@@ -58,7 +58,7 @@ update-deps:
 
 compile:
 	mkdir -p out/
-	go build -race -ldflags "-extldflags '-static'" $(APP_EXECUTABLE)
+	go build -o $(APP_EXECUTABLE)
 
 build: build-deps compile
 
