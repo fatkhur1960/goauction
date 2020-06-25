@@ -46,7 +46,7 @@ func TestActivateUser(t *testing.T) {
 	rMap2 := rv.Result.(map[string]interface{})
 	assert.Equal(t, u.Email, rMap2["email"])
 
-	cleanUsers()
+	// cleanUsers()
 }
 
 func TestUpdateUser(t *testing.T) {
@@ -69,5 +69,5 @@ func TestUpdateUser(t *testing.T) {
 	assert.Equal(t, rMap["address"], u.Address)
 	assert.Equal(t, rMap["avatar"], u.Avatar)
 
-	cleanUsers()
+	// defer cleanUsers()
 }

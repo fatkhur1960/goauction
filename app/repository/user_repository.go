@@ -107,25 +107,23 @@ func (s *UserRepository) ActivateUser(token string, passhash string) (models.Use
 }
 
 // UpdateUser dao
-func (s *UserRepository) UpdateUser(query UpdateUserQuery) (models.User, error) {
+func (s *UserRepository) UpdateUser(userID int64, query UpdateUserQuery) (models.User, error) {
 	user := models.User{}
-	user.FullName = query.FullName
-	user.Email = query.Email
-	user.PhoneNum = query.PhoneNum
-	user.Address = query.Address
-	user.Avatar = query.Avatar
-	err := user.Update(
-		models.DB,
-		models.UserDBSchema.FullName,
-		models.UserDBSchema.Email,
-		models.UserDBSchema.PhoneNum,
-		models.UserDBSchema.Address,
-		models.UserDBSchema.Avatar,
-	)
+	conn := s.UserQs.IDEq(userID)
+
+	err := conn.GetUpdater().SetFullName(
+		query.FullName,
+	).SetEmail(query.Email).SetAddress(
+		query.Address,
+	).SetPhoneNum(query.PhoneNum).SetAvatar(
+		query.Avatar,
+	).Update()
 
 	if err != nil {
 		return models.User{}, errors.New("Tidak dapat mengupdate user")
 	}
+
+	conn.One(&user)
 
 	return user, nil
 }

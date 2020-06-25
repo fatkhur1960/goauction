@@ -140,11 +140,11 @@ func (s *UserService) UpdateUserInfo(c *gin.Context) {
 	query := repo.UpdateUserQuery{}
 	validateRequest(c, &query)
 
-	user, err := s.userRepo.UpdateUser(query)
+	user, err := s.userRepo.UpdateUser(mid.CurrentUser.ID, query)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	APIResult.Success(c, &user)
+	APIResult.Success(c, user)
 }
