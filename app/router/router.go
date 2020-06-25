@@ -4,7 +4,6 @@ import (
 	mid "github.com/fatkhur1960/goauction/app/middleware"
 	"github.com/fatkhur1960/goauction/app/models"
 	"github.com/fatkhur1960/goauction/app/service"
-	"github.com/fatkhur1960/goauction/docs"
 
 	// import swagger doc
 	_ "github.com/fatkhur1960/goauction/docs"
@@ -15,7 +14,7 @@ import (
 
 // GetGeneratedRoutes list route pada app
 func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
-	apiGroup := router.Group(docs.SwaggerInfo.BasePath)
+	apiGroup := router.Group("/api")
 	{
 		// Do not edit this code by your hand
 		// this code generate automatically when program running
@@ -27,6 +26,18 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 		{
 			authServiceGroup.POST("/authorize", authService.AuthorizeUser)
 			authServiceGroup.POST("/unauthorize", mid.RequiresUserAuth, authService.UnauthorizeUser)
+		}
+
+		// Generate route for ProductService
+		productService := service.NewProductService(models.DB)
+		productServiceGroup := apiGroup.Group("/product/v1")
+		{
+			productServiceGroup.POST("/add", mid.RequiresUserAuth, productService.AddProduct)
+			productServiceGroup.GET("/list", mid.RequiresUserAuth, productService.ListProduct)
+			productServiceGroup.GET("/detail/:id", mid.RequiresUserAuth, productService.DetailProduct)
+			productServiceGroup.POST("/update/:id", mid.RequiresUserAuth, productService.UpdateProduct)
+			productServiceGroup.POST("/delete/:id", mid.RequiresUserAuth, productService.DeleteProduct)
+			productServiceGroup.POST("/bid/:id", mid.RequiresUserAuth, productService.BidProduct)
 		}
 
 		// Generate route for UserService
@@ -44,6 +55,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 
 	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.NoRoute(service.NoRouteHandler)
+	router.Use(gin.Recovery())
 
 	return router
 }

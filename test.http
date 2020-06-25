@@ -2,8 +2,8 @@ POST http://localhost:8081/api/user/v1/register
 Content-Type: application/json
 
 {
-    "full_name": "Fatkhurrohman",
-    "email": "fatkhuranonym@gmail.com",
+    "full_name": "Fatkhur ANonym",
+    "email": "fanonym1960@gmail.com",
     "phone_num": "085225520622"
 }
 
@@ -12,7 +12,7 @@ POST http://localhost:8081/api/user/v1/activate
 Content-Type: application/json
 
 {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM1NDIyMDcsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.pjmc58thKKF8762e-2tPz77zcDPvCzv4yksqd5Rq3bI",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM2MzgyNzcsInVzZXJfZW1haWwiOiIifQ.vXC9Nbkp86t7Rc9D02F1o6X94Q2BCfGpjq7RViIRH6E",
     "passhash": "123123"
 }
 
@@ -44,3 +44,29 @@ Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJl
     "email": "fatkhuranonym@gmail.com",
     "phone_num": "085225520622"
 }
+
+###
+POST http://localhost:8081/api/product/v1/add
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM2MTQwNzcsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.b7iW4kE9Su9ajny6J-nbHWxVEzq9xoQfPGMNgpBZX9M
+
+{
+    "product_name": "This is my second shoe",
+    "product_images": ["https://instagram.fjog3-1.fna.fbcdn.net/v/t51.2885-15/sh0.08/e35/c0.138.1108.1108a/s640x640/105489406_1148462512178602_122349296787087385_n.jpg?_nc_ht=instagram.fjog3-1.fna.fbcdn.net&_nc_cat=110&_nc_ohc=Q86tpiKHKMQAX_cBjai&oh=86333b5934066d5dae60f9cbf09eca33&oe=5F1D51D6","https://instagram.fjog3-1.fna.fbcdn.net/v/t51.2885-15/sh0.08/e35/s640x640/106135545_3082183131819673_1106777982358315357_n.jpg?_nc_ht=instagram.fjog3-1.fna.fbcdn.net&_nc_cat=101&_nc_ohc=zh9G0fIrjywAX811Kuj&oh=ec6ad479e1ecd8ed53514931ca04c4a2&oe=5F1B992B"],
+    "desc": "ATT school shoe",
+    "condition": 1,
+    "condition_avg": 90,
+    "start_price": 50000,
+    "bid_multpl": 50000,
+    "closed_at": "2009-11-10T23:00:00Z",
+    "labels": ["Fashion Pria","Baju"]
+}
+
+###
+GET http://localhost:8081/api/product/v1/list?offset=1&limit=1&query=school
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM2MTQwNzcsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.b7iW4kE9Su9ajny6J-nbHWxVEzq9xoQfPGMNgpBZX9M
+
+
+###
+GET http://localhost:8081/api/product/v1/detail/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE1OTM2MTQwNzcsInVzZXJfZW1haWwiOiJmYXRraHVyYW5vbnltQGdtYWlsLmNvbSJ9.b7iW4kE9Su9ajny6J-nbHWxVEzq9xoQfPGMNgpBZX9M

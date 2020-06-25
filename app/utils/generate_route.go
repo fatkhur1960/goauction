@@ -127,13 +127,16 @@ func readEndpoints() []APIGroup {
 }
 
 // GenerateRoutes automatically
-func GenerateRoutes() {
+func GenerateRoutes() error {
 	var contents string
+	var routeConst string = fmt.Sprintf("package test\n\nconst (\n")
 	routeFile := "./app/router/router.go"
+	routeConstFile := "./tests/route_const.go"
 	routes := readEndpoints()
 
 	for _, route := range routes {
 		var body string
+		var constLine string
 		serviceName := strings.ReplaceAll(route.GroupName, "New", "")
 		varName := strcase.ToLowerCamel(serviceName)
 		groupName := varName + "Group"
@@ -148,11 +151,17 @@ func GenerateRoutes() {
 			} else {
 				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", %s.%s)\n", groupName, strings.ToTitle(e.Method), e.Path, varName, e.Name)
 			}
+
+			constLine += fmt.Sprintf("\t// %sEndpoint for testing only\n", e.Name)
+			constLine += fmt.Sprintf("\t%sEndpoint = \"%s%s\"\n", e.Name, route.Base, e.Path)
 		}
 
 		body += fmt.Sprintf("\t\t}\n")
 		contents += body
+		routeConst += constLine
 	}
+
+	routeConst += fmt.Sprintf(")")
 
 	codes, err := ioutil.ReadFile(routeFile)
 	if err != nil {
@@ -175,7 +184,7 @@ func GenerateRoutes() {
 	splittedString = append(splittedString[:startIndex], splittedString[endIndex:]...)
 
 	errWrite := ioutil.WriteFile(routeFile, []byte(strings.Join(splittedString, "\n")), 0777)
-	if errWrite != nil {
-		fmt.Println(errWrite)
-	}
+	ioutil.WriteFile(routeConstFile, []byte(routeConst), 0777)
+
+	return errWrite
 }

@@ -2,27 +2,18 @@ package service
 
 import (
 	"net/http"
-	"time"
 
 	mid "github.com/fatkhur1960/goauction/app/middleware"
 	"github.com/fatkhur1960/goauction/app/models"
-	"github.com/fatkhur1960/goauction/app/utils"
+	repo "github.com/fatkhur1960/goauction/app/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
 
 type (
-	// AuthService for authentication
-	AuthService interface {
-		AuthorizeUser(c *gin.Context)
-		UnauthorizeUser(c *gin.Context)
-	}
-
-	// AuthServiceImpl for AuthService implementation
-	AuthServiceImpl struct {
-		userRepo     models.UserQuerySet
-		tokenRepo    models.AccessTokenQuerySet
-		passhashRepo models.UserPasshashQuerySet
+	// AuthService for Authentication implementation
+	AuthService struct {
+		authRepo repo.AuthRepository
 	}
 
 	// AuthQuery definisi query untuk login
@@ -35,10 +26,12 @@ type (
 // NewAuthService create new instance
 // @RouterGroup /auth/v1
 func NewAuthService(db *gorm.DB) AuthService {
-	return &AuthServiceImpl{
-		userRepo:     models.NewUserQuerySet(db),
-		tokenRepo:    models.NewAccessTokenQuerySet(db),
-		passhashRepo: models.NewUserPasshashQuerySet(db),
+	return AuthService{
+		authRepo: repo.AuthRepository{
+			UserQs:     models.NewUserQuerySet(db),
+			TokenQs:    models.NewAccessTokenQuerySet(db),
+			PasshashQs: models.NewUserPasshashQuerySet(db),
+		},
 	}
 }
 
@@ -52,40 +45,16 @@ func NewAuthService(db *gorm.DB) AuthService {
 // @Success 200 {object} app.Result{result=models.AccessToken}
 // @Failure 500 {object} app.Result
 // @Router /authorize [post]
-func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
+func (s *AuthService) AuthorizeUser(c *gin.Context) {
 	var query AuthQuery
-	var user models.User
-	var userPasshash models.UserPasshash
-
-	if err := c.ShouldBindJSON(&query); err != nil {
+	validateRequest(c, &query)
+	token, err := s.authRepo.AuthorizeUser(query.Email, query.Passhash)
+	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// check apakah user ada di db
-	err := s.userRepo.GetDB().First(&user, "email=? AND active=?", &query.Email, true).Related(&userPasshash).Error
-	if err != nil {
-		APIResult.Error(c, http.StatusUnauthorized, "Email tidak ditemukan")
-		return
-	}
-
-	// check passhash
-	if !utils.CheckPasshash(query.Passhash, userPasshash.Passhash) {
-		APIResult.Error(c, http.StatusUnauthorized, "Password tidak cocok")
-		return
-	}
-
-	// generate access token
-	token, expireTime, _ := utils.GenerateToken(user.Email)
-	accessToken := models.AccessToken{
-		User:      user,
-		Token:     token,
-		Created:   time.Now().UTC(),
-		ValidThru: expireTime,
-	}
-	resToken, _ := accessToken.CreateAccessToken()
-
-	APIResult.Success(c, resToken)
+	APIResult.Success(c, token)
 }
 
 // UnauthorizeUser docs
@@ -98,8 +67,8 @@ func (s *AuthServiceImpl) AuthorizeUser(c *gin.Context) {
 // @Failure 400 {object} app.Result
 // @Failure 401 {object} app.Result
 // @Router /unauthorize [post] [auth]
-func (s *AuthServiceImpl) UnauthorizeUser(c *gin.Context) {
-	err := s.tokenRepo.UserIDEq(mid.CurrentUser.ID).Delete()
+func (s *AuthService) UnauthorizeUser(c *gin.Context) {
+	err := s.authRepo.TokenQs.UserIDEq(mid.CurrentUser.ID).Delete()
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return

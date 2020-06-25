@@ -19,6 +19,44 @@ definitions:
       valid_thru:
         type: string
     type: object
+  models.Product:
+    properties:
+      bid_multpl:
+        type: number
+      closed_at:
+        type: string
+      condition:
+        type: integer
+      condition_avg:
+        type: number
+      created_at:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      product_name:
+        type: string
+      start_price:
+        type: number
+      user_id:
+        type: integer
+    type: object
+  models.RegisterUser:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      phone_num:
+        type: string
+      registered_at:
+        type: string
+      token:
+        type: string
+    type: object
   models.User:
     properties:
       active:
@@ -42,10 +80,12 @@ definitions:
       type:
         type: integer
     type: object
-  service.RegisterToken:
+  service.EntriesResult:
     properties:
-      token:
-        type: string
+      count:
+        type: integer
+      entries:
+        type: object
     type: object
 info:
   contact: {}
@@ -93,6 +133,31 @@ paths:
       summary: Endpoint untuk mengaktifkan user
       tags:
       - UserService
+  /add:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menambahkan product
+      tags:
+      - ProductService
   /authorize:
     post:
       consumes:
@@ -129,6 +194,153 @@ paths:
       summary: Endpoint untuk melakukan otorisasi
       tags:
       - AuthService
+  /bid/:id:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mengupdate product
+      tags:
+      - ProductService
+  /delete/:id:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menghapus product
+      tags:
+      - ProductService
+  /detail/:id:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/models.Product'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menampilkan detail product
+      tags:
+      - ProductService
+  /list:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/models.Product'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menampilkan list product
+      tags:
+      - ProductService
   /me/info:
     get:
       produces:
@@ -242,7 +454,7 @@ paths:
             - $ref: '#/definitions/app.Result'
             - properties:
                 result:
-                  $ref: '#/definitions/service.RegisterToken'
+                  $ref: '#/definitions/models.RegisterUser'
               type: object
         "400":
           description: Bad Request
@@ -275,6 +487,37 @@ paths:
       summary: Endpoint untuk menghapus otorisasi
       tags:
       - AuthService
+  /update/:id:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mengupdate product
+      tags:
+      - ProductService
 securityDefinitions:
   bearerAuth:
     in: header
