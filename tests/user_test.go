@@ -6,17 +6,18 @@ import (
 
 	"github.com/fatkhur1960/goauction/app/repository"
 	"github.com/fatkhur1960/goauction/app/service"
+	"github.com/fatkhur1960/goauction/tests/endpoint"
 	"github.com/go-playground/assert/v2"
 	"syreclabs.com/go/faker"
 )
 
 func TestRegisterUser(t *testing.T) {
 	u := service.RegisterUserQuery{
-		FullName: faker.Name().Name(),
-		Email:    faker.Internet().Email(),
-		PhoneNum: faker.PhoneNumber().CellPhone(),
+		FullName: "a",
+		Email:    "a",
+		PhoneNum: "a",
 	}
-	rv := reqPOST(RegisterUserEndpoint, u)
+	rv := reqPOST(endpoint.RegisterUser, u)
 	assert.Equal(t, rv.Code, 0)
 
 	rMap := rv.Result.(map[string]interface{})
@@ -30,7 +31,7 @@ func TestActivateUser(t *testing.T) {
 		PhoneNum: faker.PhoneNumber().CellPhone(),
 	}
 
-	rv := reqPOST(RegisterUserEndpoint, u)
+	rv := reqPOST(endpoint.RegisterUser, u)
 	assert.Equal(t, rv.Code, 0)
 
 	rMap := rv.Result.(map[string]interface{})
@@ -40,7 +41,7 @@ func TestActivateUser(t *testing.T) {
 		Token:    fmt.Sprintf("%v", rMap["token"]),
 		Passhash: faker.Internet().Password(8, 12),
 	}
-	rv1 := reqPOST(ActivateUserEndpoint, activate)
+	rv1 := reqPOST(endpoint.ActivateUser, activate)
 	assert.Equal(t, rv1.Code, 0)
 
 	rMap2 := rv.Result.(map[string]interface{})
@@ -59,7 +60,7 @@ func TestUpdateUser(t *testing.T) {
 		Avatar:   faker.Internet().Url() + ".jpg",
 	}
 
-	rv := reqPOST(UpdateUserInfoEndpoint, u, token)
+	rv := reqPOST(endpoint.UpdateUserInfo, u, token)
 	assert.Equal(t, rv.Code, 0)
 
 	rMap := rv.Result.(map[string]interface{})

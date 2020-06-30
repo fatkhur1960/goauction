@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fatkhur1960/goauction/app"
 	"github.com/fatkhur1960/goauction/app/models"
 	"github.com/fatkhur1960/goauction/app/utils"
 )
@@ -13,6 +14,15 @@ type AuthRepository struct {
 	UserQs     models.UserQuerySet
 	TokenQs    models.AccessTokenQuerySet
 	PasshashQs models.UserPasshashQuerySet
+}
+
+// NewAuthRepository new instance
+func NewAuthRepository() *AuthRepository {
+	return &AuthRepository{
+		UserQs:     models.NewUserQuerySet(app.DB),
+		TokenQs:    models.NewAccessTokenQuerySet(app.DB),
+		PasshashQs: models.NewUserPasshashQuerySet(app.DB),
+	}
 }
 
 // AuthorizeUser method untuk mengotorisasi user

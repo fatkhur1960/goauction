@@ -4,16 +4,14 @@ import (
 	"net/http"
 
 	mid "github.com/fatkhur1960/goauction/app/middleware"
-	"github.com/fatkhur1960/goauction/app/models"
 	repo "github.com/fatkhur1960/goauction/app/repository"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 )
 
 type (
 	// AuthService for Authentication implementation
 	AuthService struct {
-		authRepo repo.AuthRepository
+		authRepo *repo.AuthRepository
 	}
 
 	// AuthQuery definisi query untuk login
@@ -25,13 +23,9 @@ type (
 
 // NewAuthService create new instance
 // @RouterGroup /auth/v1
-func NewAuthService(db *gorm.DB) AuthService {
-	return AuthService{
-		authRepo: repo.AuthRepository{
-			UserQs:     models.NewUserQuerySet(db),
-			TokenQs:    models.NewAccessTokenQuerySet(db),
-			PasshashQs: models.NewUserPasshashQuerySet(db),
-		},
+func NewAuthService() *AuthService {
+	return &AuthService{
+		authRepo: repo.NewAuthRepository(),
 	}
 }
 

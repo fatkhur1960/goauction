@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/fatkhur1960/goauction/app/service"
+	"github.com/fatkhur1960/goauction/tests/endpoint"
 	"github.com/go-playground/assert/v2"
 )
 
@@ -15,7 +16,7 @@ func TestAuthorizeUser(t *testing.T) {
 		Passhash: passhash,
 	}
 
-	rv := reqPOST(AuthorizeUserEndpoint, payload)
+	rv := reqPOST(endpoint.AuthorizeUser, payload)
 	assert.Equal(t, rv.Code, 0)
 
 	rMap := rv.Result.(map[string]interface{})
@@ -27,9 +28,9 @@ func TestAuthorizeUser(t *testing.T) {
 func TestUnauthorizeUser(t *testing.T) {
 	token := authorizeUser()
 
-	rv := reqPOST(UnauthorizeUserEndpoint, nil, token)
+	rv := reqPOST(endpoint.UnauthorizeUser, nil, token)
 	assert.Equal(t, rv.Code, 0)
 
-	rv1 := reqGET(MeInfoEndpoint, token)
+	rv1 := reqGET(endpoint.MeInfo, token)
 	assert.Equal(t, rv1.Code, http.StatusUnauthorized)
 }

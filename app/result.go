@@ -55,4 +55,5 @@ func (r *Result) Error(c *gin.Context, code int, description string) {
 
 	json.Unmarshal(data, &output)
 	c.JSON(code, output)
+	c.Abort()
 }

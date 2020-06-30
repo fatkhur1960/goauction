@@ -22,6 +22,16 @@ type authHeader struct {
 	Authorization string `binding:"required"`
 }
 
+// RequestValidator for params/uri/json validator
+func RequestValidator(c *gin.Context, query interface{}) {
+	if err := c.ShouldBindJSON(query); err != nil {
+		apiResult.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.Set("validated", query)
+	c.Next()
+}
+
 // RequiresUserAuth middleware
 func RequiresUserAuth(c *gin.Context) {
 	auth := authHeader{}
@@ -46,7 +56,7 @@ func RequiresUserAuth(c *gin.Context) {
 	if err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Invalid Access Token")
 		c.Abort()
-	} else if err := models.NewAccessTokenQuerySet(models.DB).TokenEq(tokenString).One(&accessToken); err != nil {
+	} else if err := models.NewAccessTokenQuerySet(app.DB).TokenEq(tokenString).One(&accessToken); err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Unauthorized")
 		c.Abort()
 	} else if accessToken.IsExpired() {
@@ -54,6 +64,7 @@ func RequiresUserAuth(c *gin.Context) {
 		c.Abort()
 	}
 
-	models.NewUserQuerySet(models.DB).IDEq(accessToken.UserID).One(&CurrentUser)
+	CurrentUser = models.User{}
+	models.NewUserQuerySet(app.DB).IDEq(accessToken.UserID).One(&CurrentUser)
 	c.Next()
 }

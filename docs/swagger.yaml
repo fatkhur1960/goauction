@@ -19,10 +19,21 @@ definitions:
       valid_thru:
         type: string
     type: object
+  models.BidStatus:
+    properties:
+      bid_count:
+        type: integer
+      latest_bid_price:
+        type: number
+      latest_user_id:
+        type: integer
+    type: object
   models.Product:
     properties:
       bid_multpl:
         type: number
+      closed:
+        type: boolean
       closed_at:
         type: string
       condition:
@@ -35,12 +46,50 @@ definitions:
         type: string
       id:
         type: integer
+      labels:
+        items:
+          $ref: '#/definitions/models.ProductLabel'
+        type: array
+      product_images:
+        items:
+          $ref: '#/definitions/models.ProductImage'
+        type: array
       product_name:
         type: string
+      sold:
+        type: boolean
       start_price:
         type: number
       user_id:
         type: integer
+    type: object
+  models.ProductBidder:
+    properties:
+      bid_price:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: integer
+      product_id:
+        type: integer
+      user:
+        $ref: '#/definitions/models.User'
+        type: object
+      user_id:
+        type: integer
+      winner:
+        type: boolean
+    type: object
+  models.ProductImage:
+    properties:
+      image_url:
+        type: string
+    type: object
+  models.ProductLabel:
+    properties:
+      name:
+        type: string
     type: object
   models.RegisterUser:
     properties:
@@ -80,12 +129,67 @@ definitions:
       type:
         type: integer
     type: object
+  models.UserNotif:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      notif_type:
+        type: integer
+      read:
+        type: boolean
+      target:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
   service.EntriesResult:
     properties:
       count:
         type: integer
       entries:
         type: object
+    type: object
+  service.Product:
+    properties:
+      bid_multpl:
+        type: number
+      bid_status:
+        $ref: '#/definitions/models.BidStatus'
+        type: object
+      closed:
+        type: boolean
+      closed_at:
+        type: string
+      condition:
+        type: integer
+      condition_avg:
+        type: number
+      created_at:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      labels:
+        items:
+          $ref: '#/definitions/models.ProductLabel'
+        type: array
+      product_images:
+        items:
+          $ref: '#/definitions/models.ProductImage'
+        type: array
+      product_name:
+        type: string
+      sold:
+        type: boolean
+      start_price:
+        type: number
     type: object
 info:
   contact: {}
@@ -137,6 +241,65 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: ProductName
+        in: body
+        name: product_name
+        required: true
+        schema:
+          type: string
+      - description: ProductImages
+        in: body
+        name: product_images
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Desc
+        in: body
+        name: desc
+        required: true
+        schema:
+          type: string
+      - description: Condition
+        in: body
+        name: condition
+        required: true
+        schema:
+          type: integer
+      - description: ConditionAvg
+        in: body
+        name: condition_avg
+        required: true
+        schema:
+          type: integer
+      - description: StartPrice
+        in: body
+        name: start_price
+        required: true
+        schema:
+          type: integer
+      - description: BidMultpl
+        in: body
+        name: bid_multpl
+        required: true
+        schema:
+          type: integer
+      - description: ClosedAt
+        in: body
+        name: closed_at
+        required: true
+        schema:
+          type: string
+      - description: Labels
+        in: body
+        name: labels
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
       produces:
       - application/json
       responses:
@@ -194,16 +357,23 @@ paths:
       summary: Endpoint untuk melakukan otorisasi
       tags:
       - AuthService
-  /bid/:id:
+  /bid:
     post:
       consumes:
       - application/json
       parameters:
-      - description: ID
-        in: path
-        name: id
+      - description: ProductID
+        in: body
+        name: product_id
         required: true
-        type: integer
+        schema:
+          type: integer
+      - description: BidPrice
+        in: body
+        name: bid_price
+        required: true
+        schema:
+          type: number
       produces:
       - application/json
       responses:
@@ -214,7 +384,7 @@ paths:
             - $ref: '#/definitions/app.Result'
             - properties:
                 result:
-                  $ref: '#/definitions/models.Product'
+                  $ref: '#/definitions/models.ProductBidder'
               type: object
         "400":
           description: Bad Request
@@ -313,6 +483,10 @@ paths:
         in: query
         name: query
         type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
       produces:
       - application/json
       responses:
@@ -328,7 +502,7 @@ paths:
                   - properties:
                       entries:
                         items:
-                          $ref: '#/definitions/models.Product'
+                          $ref: '#/definitions/service.Product'
                         type: array
                     type: object
               type: object
@@ -339,6 +513,37 @@ paths:
       security:
       - bearerAuth: []
       summary: Endpoint untuk menampilkan list product
+      tags:
+      - ProductService
+  /mark-as-sold/:id:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint digunakan untuk menandai produk sudah terjual
       tags:
       - ProductService
   /me/info:
@@ -421,6 +626,131 @@ paths:
       summary: Endpoint untuk mengupdate informasi user
       tags:
       - UserService
+  /me/list:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/service.Product'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mendapatkan list product untuk current user
+      tags:
+      - ProductService
+  /notifs:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/models.UserNotif'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mendapatkan list notif untuk current user
+      tags:
+      - UserService
+  /notifs/read:
+    post:
+      parameters:
+      - description: NotifIds
+        in: body
+        name: notif_ids
+        required: true
+        schema:
+          items:
+            type: integer
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.Result'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: endpoint untuk menandai notif sudah terbaca
+      tags:
+      - UserService
   /register:
     post:
       consumes:
@@ -463,6 +793,44 @@ paths:
       summary: Endpoint untuk register user
       tags:
       - UserService
+  /reopen:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ProductID
+        in: body
+        name: id
+        required: true
+        schema:
+          type: integer
+      - description: ClosedAT
+        in: body
+        name: closed_at
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Product'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint digunakan untuk membuka bid kembali
+      tags:
+      - ProductService
   /unauthorize:
     post:
       consumes:
@@ -487,16 +855,75 @@ paths:
       summary: Endpoint untuk menghapus otorisasi
       tags:
       - AuthService
-  /update/:id:
+  /update:
     post:
       consumes:
       - application/json
       parameters:
       - description: ID
-        in: path
+        in: body
         name: id
         required: true
-        type: integer
+        schema:
+          type: integer
+      - description: ProductName
+        in: body
+        name: product_name
+        required: true
+        schema:
+          type: string
+      - description: ProductImages
+        in: body
+        name: product_images
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      - description: Desc
+        in: body
+        name: desc
+        required: true
+        schema:
+          type: string
+      - description: Condition
+        in: body
+        name: condition
+        required: true
+        schema:
+          type: integer
+      - description: ConditionAvg
+        in: body
+        name: condition_avg
+        required: true
+        schema:
+          type: integer
+      - description: StartPrice
+        in: body
+        name: start_price
+        required: true
+        schema:
+          type: integer
+      - description: BidMultpl
+        in: body
+        name: bid_multpl
+        required: true
+        schema:
+          type: integer
+      - description: ClosedAt
+        in: body
+        name: closed_at
+        required: true
+        schema:
+          type: string
+      - description: Labels
+        in: body
+        name: labels
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
       produces:
       - application/json
       responses:

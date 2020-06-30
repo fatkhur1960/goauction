@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/fatkhur1960/goauction/app"
 	"github.com/fatkhur1960/goauction/app/models"
 	"github.com/fatkhur1960/goauction/app/utils"
 )
@@ -28,6 +29,41 @@ type (
 	}
 )
 
+// NewUserRepository intance
+func NewUserRepository() *UserRepository {
+	return &UserRepository{
+		UserQs:     models.NewUserQuerySet(app.DB),
+		RegisterQs: models.NewRegisterUserQuerySet(app.DB),
+		PasshashQs: models.NewUserPasshashQuerySet(app.DB),
+	}
+}
+
+// GetByID get user by id
+func (s *UserRepository) GetByID(userID int64) (models.User, error) {
+	user := models.User{}
+	if err := s.UserQs.IDEq(userID).One(&user); err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+// UserSimple digunakan untuk medapatkan simple user
+func (s *UserRepository) UserSimple(userID int64) *models.UserSimple {
+	simple := models.User{}
+	s.UserQs.IDEq(userID).Select(
+		models.UserDBSchema.ID,
+		models.UserDBSchema.FullName,
+		models.UserDBSchema.Avatar,
+	).One(&simple)
+
+	return &models.UserSimple{
+		ID:       simple.ID,
+		FullName: simple.FullName,
+		Avatar:   simple.Avatar,
+	}
+}
+
 // RegisterUser dao
 func (s *UserRepository) RegisterUser(f string, e string, p string, t string) (models.RegisterUser, error) {
 	registerModel := models.RegisterUser{}
@@ -47,7 +83,7 @@ func (s *UserRepository) RegisterUser(f string, e string, p string, t string) (m
 		registerModel.PhoneNum = p
 		registerModel.Token = t
 		registerModel.RegisteredAt = time.Now().UTC()
-		registerModel.Create(models.DB)
+		registerModel.Create(app.DB)
 
 		// return user yang baru mendaftar
 		return registerModel, nil
@@ -99,9 +135,9 @@ func (s *UserRepository) ActivateUser(token string, passhash string) (models.Use
 		Deprecated: false,
 	}
 	// aktifkan user
-	userPasshash.Create(models.DB)
+	userPasshash.Create(app.DB)
 	// hapus dari register user
-	registerModel.Delete(models.DB)
+	registerModel.Delete(app.DB)
 
 	return resUser, nil
 }
@@ -134,7 +170,7 @@ func (s *UserRepository) CleanUpUser() {
 	users := []models.User{}
 	s.UserQs.All(&users)
 	for _, user := range users {
-		if err := user.Delete(models.DB); err != nil {
+		if err := user.Delete(app.DB); err != nil {
 			log.Fatal(err.Error())
 		}
 	}

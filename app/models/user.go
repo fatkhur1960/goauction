@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/fatkhur1960/goauction/app"
 )
 
 //go:generate goqueryset -in user.go
@@ -9,16 +11,23 @@ import (
 // User definisi model untuk user
 // gen:qs
 type User struct {
-	ID           int64     `json:"id"`
-	FullName     string    `json:"full_name"`
-	Email        string    `json:"email"`
-	PhoneNum     string    `json:"phone_num"`
-	Address      string    `json:"address"`
-	Avatar       string    `json:"avatar"`
-	Type         int       `json:"type"`
-	Active       bool      `json:"active"`
-	LastLogin    time.Time `json:"last_login"`
-	RegisteredAt time.Time `json:"registered_at"`
+	ID           int64      `json:"id"`
+	FullName     string     `json:"full_name"`
+	Email        string     `json:"email"`
+	PhoneNum     string     `json:"phone_num"`
+	Address      string     `json:"address,omitempty"`
+	Avatar       string     `json:"avatar,omitempty"`
+	Type         int        `json:"type"`
+	Active       bool       `json:"active"`
+	LastLogin    *time.Time `json:"last_login"`
+	RegisteredAt time.Time  `json:"registered_at"`
+}
+
+// UserSimple ...
+type UserSimple struct {
+	ID       int64  `json:"id"`
+	FullName string `json:"full_name"`
+	Avatar   string `json:"avatar,omitempty"`
 }
 
 // RegisterUser definisi model untuk register user
@@ -54,21 +63,26 @@ type AccessToken struct {
 	ValidThru time.Time `json:"valid_thru"`
 }
 
+// TableName for UserSimple model
+func (UserSimple) TableName() string {
+	return "users"
+}
+
 // CreateUser dao untuk menambahkan user
 func (user User) CreateUser() (User, error) {
-	err := DB.FirstOrCreate(&user, User{Email: user.Email}).Error
+	err := app.DB.FirstOrCreate(&user, User{Email: user.Email}).Error
 	return user, err
 }
 
 // CreateAccessToken dao untuk menambahkan user
 func (token AccessToken) CreateAccessToken() (AccessToken, error) {
-	err := DB.FirstOrCreate(&token, AccessToken{UserID: token.User.ID}).Error
+	err := app.DB.FirstOrCreate(&token, AccessToken{UserID: token.User.ID}).Error
 	return token, err
 }
 
 // RemoveAccessToken dao untuk menghapus token
 func (token AccessToken) RemoveAccessToken() error {
-	return DB.Delete(token).Error
+	return app.DB.Delete(token).Error
 }
 
 // IsExpired dao untuk check apakah token sudah expired
@@ -79,10 +93,10 @@ func (token AccessToken) IsExpired() bool {
 
 // ActivateUser dao untuk mengaktifkan user
 func (userPasshash UserPasshash) ActivateUser() error {
-	return DB.Create(&userPasshash).Error
+	return app.DB.Create(&userPasshash).Error
 }
 
 // ClearRegisteredUser dao untuk menghapus user yang sudah diaktifkan
 func (user RegisterUser) ClearRegisteredUser() error {
-	return DB.Delete(&user).Error
+	return app.DB.Delete(&user).Error
 }

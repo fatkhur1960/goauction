@@ -29,6 +29,7 @@ type (
 		Path   string
 		Auth   bool
 		Method string
+		Param  interface{}
 	}
 )
 
@@ -37,7 +38,7 @@ func parseGroup(input string) string {
 	return strings.TrimSpace(path)
 }
 
-func parseEndpoint(name string, input string) APIEndpoint {
+func parseEndpoint(name string, input string, param interface{}) APIEndpoint {
 	reMethods := regexp.MustCompile(`get|post|delete|put|patch`)
 	args := strings.Split(input[len("@Router "):], " ")
 
@@ -67,6 +68,7 @@ func parseEndpoint(name string, input string) APIEndpoint {
 		Path:   path,
 		Auth:   auth,
 		Method: method,
+		Param:  param,
 	}
 }
 
@@ -85,6 +87,7 @@ func readEndpoints() []APIGroup {
 	})
 
 	for _, path := range apiFiles {
+		src, _ := ioutil.ReadFile(path)
 		node, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
 			log.Fatal(err)
@@ -94,6 +97,9 @@ func readEndpoints() []APIGroup {
 
 		reEnd := regexp.MustCompile(`@Router.+`)
 		reGroup := regexp.MustCompile(`@RouterGroup.+`)
+
+		offset := node.Pos()
+		stringSrc := string(src)
 
 		comments := []*ast.CommentGroup{}
 		ast.Inspect(node, func(n ast.Node) bool {
@@ -111,8 +117,16 @@ func readEndpoints() []APIGroup {
 						Base:      parseGroup(reGroup.FindString(fn.Doc.Text())),
 					}
 				} else if reEnd.MatchString(fn.Doc.Text()) {
+					var paramName interface{}
+					for _, param := range fn.Type.Params.List {
+						typeName := param.Type
+						typeStr := stringSrc[typeName.Pos()-offset : typeName.End()-offset]
+						if !strings.Contains(typeStr, "gin.Context") {
+							paramName = typeStr
+						}
+					}
 					meta := reEnd.FindString(fn.Doc.Text())
-					child := append(routeGroup.Child, parseEndpoint(fn.Name.String(), meta))
+					child := append(routeGroup.Child, parseEndpoint(fn.Name.String(), meta, paramName))
 					routeGroup.Child = child
 				}
 			}
@@ -127,11 +141,12 @@ func readEndpoints() []APIGroup {
 }
 
 // GenerateRoutes automatically
-func GenerateRoutes() error {
+func GenerateRoutes() bool {
+	generated := false
 	var contents string
-	var routeConst string = fmt.Sprintf("package test\n\nconst (\n")
+	var routeConst string = fmt.Sprintf("package endpoint\n\nconst (\n")
 	routeFile := "./app/router/router.go"
-	routeConstFile := "./tests/route_const.go"
+	routeConstFile := "./tests/endpoint/route_const.go"
 	routes := readEndpoints()
 
 	for _, route := range routes {
@@ -141,19 +156,39 @@ func GenerateRoutes() error {
 		varName := strcase.ToLowerCamel(serviceName)
 		groupName := varName + "Group"
 		body = fmt.Sprintf("\n\t\t// Generate route for %s\n", serviceName)
-		body += fmt.Sprintf("\t\t%s := service.%s(models.DB)\n", varName, route.GroupName)
+		body += fmt.Sprintf("\t\t%s := service.%s()\n", varName, route.GroupName)
 		body += fmt.Sprintf("\t\t%s := apiGroup.Group(\"%s\")\n", groupName, route.Base)
 		body += fmt.Sprintf("\t\t{\n")
 
 		for _, e := range route.Child {
-			if e.Auth {
-				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", mid.RequiresUserAuth, %s.%s)\n", groupName, e.Method, e.Path, varName, e.Name)
+			var validator string
+			if e.Param != nil {
+				param := fmt.Sprintf("service.%s", e.Param)
+				if strings.HasPrefix(e.Param.(string), "*repo") {
+					param = e.Param.(string)
+				}
+
+				param = strings.ReplaceAll(param, "*", "")
+
+				validator = "func(c *gin.Context) {\n"
+				// validator += fmt.Sprintf("\tquery := &%s{}\n", param)
+				validator += fmt.Sprintf("\tmid.RequestValidator(c, &%s{})\n", param)
+				validator += "\t}, "
+				validator += "func(c *gin.Context) {\n"
+				validator += fmt.Sprintf("\tquery, ok := c.MustGet(\"validated\").(*%s)\n", param)
+				validator += "if !ok {\n log.Println(\"validated not set\")\n}\n"
+				validator += fmt.Sprintf("\t%s.%s(c, query)\n}", varName, e.Name)
 			} else {
-				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", %s.%s)\n", groupName, strings.ToTitle(e.Method), e.Path, varName, e.Name)
+				validator = fmt.Sprintf("%s.%s", varName, e.Name)
+			}
+			if e.Auth {
+				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", mid.RequiresUserAuth, %s)\n", groupName, e.Method, e.Path, validator)
+			} else {
+				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", %s)\n", groupName, strings.ToTitle(e.Method), e.Path, validator)
 			}
 
 			constLine += fmt.Sprintf("\t// %sEndpoint for testing only\n", e.Name)
-			constLine += fmt.Sprintf("\t%sEndpoint = \"%s%s\"\n", e.Name, route.Base, e.Path)
+			constLine += fmt.Sprintf("\t%s = \"%s%s\"\n", e.Name, route.Base, e.Path)
 		}
 
 		body += fmt.Sprintf("\t\t}\n")
@@ -185,6 +220,9 @@ func GenerateRoutes() error {
 
 	errWrite := ioutil.WriteFile(routeFile, []byte(strings.Join(splittedString, "\n")), 0777)
 	ioutil.WriteFile(routeConstFile, []byte(routeConst), 0777)
+	if errWrite != nil {
+		generated = true
+	}
 
-	return errWrite
+	return generated
 }

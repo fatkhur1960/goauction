@@ -1,21 +1,25 @@
 package service
 
 import (
+	"log"
 	"net/http"
 
-	"github.com/fatkhur1960/goauction/app/event"
 	mid "github.com/fatkhur1960/goauction/app/middleware"
-	"github.com/fatkhur1960/goauction/app/models"
 	repo "github.com/fatkhur1960/goauction/app/repository"
+	"github.com/fatkhur1960/goauction/app/types"
 	"github.com/fatkhur1960/goauction/app/utils"
+	"github.com/fatkhur1960/goauction/system/event"
+	"github.com/fatkhur1960/goauction/system/queue"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 )
 
 type (
 	// UserService implementation for users
 	UserService struct {
-		userRepo repo.UserRepository
+		userRepo      *repo.UserRepository
+		productRepo   *repo.ProductRepository
+		notifRepo     *repo.NotifRepository
+		eventListener *event.Listener
 	}
 
 	// RegisterUserQuery definisi query untuk register user
@@ -30,19 +34,21 @@ type (
 		Token    string `json:"token" binding:"required"`
 		Passhash string `json:"passhash" binding:"required"`
 	}
+
+	// ReadNotifQuery definisi query untuk menandai notif sudah dibaca
+	ReadNotifQuery struct {
+		NotifIds []int64 `json:"notif_ids" binding:"required"`
+	}
 )
 
 // NewUserService instance for UserService
 // @RouterGroup /user/v1
-func NewUserService(db *gorm.DB) UserService {
-	userRepository := repo.UserRepository{
-		UserQs:     models.NewUserQuerySet(db),
-		RegisterQs: models.NewRegisterUserQuerySet(db),
-		PasshashQs: models.NewUserPasshashQuerySet(db),
-	}
-
-	return UserService{
-		userRepo: userRepository,
+func NewUserService() *UserService {
+	return &UserService{
+		userRepo:      repo.NewUserRepository(),
+		notifRepo:     repo.NewNotifRepository(),
+		productRepo:   repo.NewProductRepository(),
+		eventListener: event.NewListener(queue.JobQueue),
 	}
 }
 
@@ -57,10 +63,7 @@ func NewUserService(db *gorm.DB) UserService {
 // @Success 200 {object} app.Result{result=models.RegisterUser}
 // @Failure 400 {object} app.Result
 // @Router /register [post]
-func (s *UserService) RegisterUser(c *gin.Context) {
-	query := RegisterUserQuery{}
-	validateRequest(c, &query)
-
+func (s *UserService) RegisterUser(c *gin.Context, query *RegisterUserQuery) {
 	token, _, _ := utils.GenerateToken(query.Email)
 	user, err := s.userRepo.RegisterUser(
 		query.FullName,
@@ -75,7 +78,7 @@ func (s *UserService) RegisterUser(c *gin.Context) {
 	}
 
 	// Emmit register event
-	event.Listener.Emmit(&event.UserRegisteredPayload{
+	s.eventListener.Emmit(event.UserRegisteredEvent{
 		FullName: user.FullName,
 		Email:    user.Email,
 		PhoneNum: user.PhoneNum,
@@ -96,10 +99,7 @@ func (s *UserService) RegisterUser(c *gin.Context) {
 // @Success 200 {object} app.Result{result=models.User}
 // @Failure 400 {object} app.Result
 // @Router /activate [post]
-func (s *UserService) ActivateUser(c *gin.Context) {
-	query := ActivateUserQuery{}
-	validateRequest(c, &query)
-
+func (s *UserService) ActivateUser(c *gin.Context, query *ActivateUserQuery) {
 	user, err := s.userRepo.ActivateUser(query.Token, query.Passhash)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
@@ -138,7 +138,9 @@ func (s *UserService) MeInfo(c *gin.Context) {
 // @Router /me/info [post] [auth]
 func (s *UserService) UpdateUserInfo(c *gin.Context) {
 	query := repo.UpdateUserQuery{}
-	validateRequest(c, &query)
+	if validateRequest(c, &query) != nil {
+		return
+	}
 
 	user, err := s.userRepo.UpdateUser(mid.CurrentUser.ID, query)
 	if err != nil {
@@ -147,4 +149,85 @@ func (s *UserService) UpdateUserInfo(c *gin.Context) {
 	}
 
 	APIResult.Success(c, user)
+}
+
+// ListUserBids docs
+// @Tags UserService
+// @Security bearerAuth
+// @Summary Endpoint untuk mendapatkan bid history
+// @Product json
+// @Param limit query int true "Limit"
+// @Param offset query int true "Offset"
+// @Param query query string false "Query"
+// @Param filter query string false "Filter"
+// @Success 200 {object} app.Result{result=EntriesResult{entries=[]service.Product}}
+// @Failure 400 {object} app.Result
+// @Router /bids [get] [auth]
+func (s *UserService) ListUserBids(c *gin.Context) {
+	query := QueryEntries{}
+	if err := query.validate(c, types.ValidateQuery); err != nil {
+		return
+	}
+
+	rawEntries, count, err := s.productRepo.GetBidProductList(mid.CurrentUser.ID, query.Offset, query.Limit)
+	if err != nil {
+		log.Fatal("UserService]", err)
+	}
+
+	entries := []types.Product{}
+	for _, product := range rawEntries {
+		entries = append(entries, product.ToAPI(mid.CurrentUser.ID))
+	}
+
+	APIResult.Success(c, EntriesResult{entries, count})
+}
+
+// ListUserNotifs docs
+// @Tags UserService
+// @Security bearerAuth
+// @Summary Endpoint untuk mendapatkan list notif untuk current user
+// @Produce json
+// @Param limit query int true "Limit"
+// @Param offset query int true "Offset"
+// @Param query query string false "Query"
+// @Param filter query string false "Filter"
+// @Success 200 {object} app.Result{result=EntriesResult{entries=[]models.UserNotif}}
+// @Failure 400 {object} app.Result
+// @Router /notifs [get] [auth]
+func (s *UserService) ListUserNotifs(c *gin.Context) {
+	query := QueryEntries{}
+	if query.validate(c, types.ValidateQuery) != nil {
+		return
+	}
+
+	entries, count, err := s.notifRepo.GetUserNotif(mid.CurrentUser.ID, query.Offset, query.Limit)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	APIResult.Success(c, EntriesResult{entries, count})
+}
+
+// MarkAsReadNotif docs
+// @Tags UserService
+// @Security bearerAuth
+// @Summary endpoint untuk menandai notif sudah terbaca
+// @Produce json
+// @Param notif_ids body []int true "NotifIds"
+// @Success 200 {object} app.Result
+// @Failure 400 {object} app.Result
+// @Router /notifs/read [post] [auth]
+func (s *UserService) MarkAsReadNotif(c *gin.Context) {
+	query := ReadNotifQuery{}
+	if validateRequest(c, &query) != nil {
+		return
+	}
+
+	err := s.notifRepo.MarkAsRead(query.NotifIds, mid.CurrentUser.ID)
+	if err != nil {
+		APIResult.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	APIResult.Success(c, nil)
 }

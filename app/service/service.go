@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/fatkhur1960/goauction/app"
+	"github.com/fatkhur1960/goauction/app/types"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,9 +22,10 @@ type (
 
 	// QueryEntries request type struct
 	QueryEntries struct {
-		Limit  int    `form:"limit"`
-		Offset int    `form:"offset" binding:"required"`
+		Limit  int    `form:"limit" binding:"required"`
+		Offset int    `form:"offset"`
 		Query  string `form:"query"`
+		Filter string `form:"filter"`
 	}
 
 	// IDQuery request type struct
@@ -32,57 +34,51 @@ type (
 	}
 )
 
-const (
-	typeJSON  = 1
-	typeQuery = 2
-	typeURI   = 3
-)
-
-func (q *IDQuery) validate(c *gin.Context, t int) {
+func (q *IDQuery) validate(c *gin.Context, t types.ValidatorType) error {
 	var err error
 	switch t {
-	case typeJSON:
+	case types.ValidateJSON:
 		err = c.ShouldBindJSON(&q)
-	case typeQuery:
+	case types.ValidateQuery:
 		err = c.ShouldBindQuery(&q)
-	case typeURI:
+	case types.ValidateURI:
 		err = c.ShouldBindUri(&q)
 	}
 
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
-		return
+		return err
 	}
-	return
+	return nil
 }
 
-func (q *QueryEntries) validate(c *gin.Context, t int) {
+func (q *QueryEntries) validate(c *gin.Context, t types.ValidatorType) error {
 	var err error
 	switch t {
-	case typeJSON:
+	case types.ValidateJSON:
 		err = c.ShouldBindJSON(&q)
-	case typeQuery:
+	case types.ValidateQuery:
 		err = c.ShouldBindQuery(&q)
-	case typeURI:
+	case types.ValidateURI:
 		err = c.ShouldBindUri(&q)
 	}
 
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
-		return
+		return err
 	}
 
-	return
+	return nil
 }
 
 // Body request validation
-func validateRequest(c *gin.Context, query interface{}) interface{} {
+func validateRequest(c *gin.Context, query interface{}) error {
 	if err := c.ShouldBindJSON(query); err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
-		return nil
+		return err
 	}
 
-	return query
+	return nil
 }
 
 // APIResult for json output

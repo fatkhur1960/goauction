@@ -22,7 +22,8 @@ CREATE TABLE product_images (
 CREATE TABLE product_labels (
     id BIGSERIAL PRIMARY KEY,
     product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    "name" TEXT NOT NULL
+    "name" TEXT NOT NULL,
+    "value" TEXT NOT NULL
 );
 
 CREATE TABLE product_bidders (

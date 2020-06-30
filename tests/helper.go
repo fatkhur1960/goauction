@@ -17,7 +17,9 @@ import (
 	"github.com/fatkhur1960/goauction/app/repository"
 	"github.com/fatkhur1960/goauction/app/router"
 	"github.com/fatkhur1960/goauction/app/service"
+	"github.com/fatkhur1960/goauction/app/types"
 	"github.com/fatkhur1960/goauction/app/utils"
+	"github.com/fatkhur1960/goauction/tests/endpoint"
 	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/mapstructure"
 	"syreclabs.com/go/faker"
@@ -29,7 +31,7 @@ var (
 )
 
 func getTestingRoutes() *gin.Engine {
-	models.ConnectDatabaseTest()
+	app.ConnectDatabaseTest()
 	gin.SetMode(gin.TestMode)
 	router := router.GetGeneratedRoutes(gin.New())
 	return router
@@ -65,18 +67,23 @@ func reqPOST(path string, args ...interface{}) app.Result {
 		token = args[1].(string)
 	}
 
-	query, _ := json.MarshalIndent(payload, "", "\t")
+	query, _ := json.Marshal(payload)
 	if os.Getenv("TEST_LOG") == "debug" {
 		log.Printf("=> sending payload to %s %s\n", url, string(query))
 	}
-	req, err := http.NewRequest(
+	req, reqErr := http.NewRequest(
 		"POST",
 		url,
 		bytes.NewBuffer(query),
 	)
+	if reqErr != nil {
+		log.Println("]", reqErr.Error())
+	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	resp, err := client.Do(req)
+
+	log.Println("]", resp)
 
 	return parseResult(resp, err)
 }
@@ -104,19 +111,19 @@ func generateUserThenActivate() (string, string) {
 	u := service.RegisterUserQuery{
 		FullName: faker.Name().Name(),
 		Email:    faker.Internet().Email(),
-		PhoneNum: faker.PhoneNumber().CellPhone(),
+		PhoneNum: "6288112212221",
 	}
 
 	passhash := faker.Internet().Password(8, 12)
 
-	rv := reqPOST(RegisterUserEndpoint, u)
+	rv := reqPOST(endpoint.RegisterUser, u)
 	rMap := rv.Result.(map[string]interface{})
 
 	activate := service.ActivateUserQuery{
 		Token:    fmt.Sprintf("%v", rMap["token"]),
 		Passhash: passhash,
 	}
-	reqPOST(ActivateUserEndpoint, activate)
+	reqPOST(endpoint.ActivateUser, activate)
 
 	return u.Email, passhash
 }
@@ -128,7 +135,7 @@ func authorizeUser() string {
 		Passhash: passhash,
 	}
 
-	rv := reqPOST(AuthorizeUserEndpoint, payload)
+	rv := reqPOST(endpoint.AuthorizeUser, payload)
 	rMap := rv.Result.(map[string]interface{})
 	return rMap["token"].(string)
 }
@@ -143,14 +150,14 @@ func createProduct(token string) (interface{}, error) {
 		StartPrice:    float64(faker.Commerce().Price()),
 		BidMultpl:     float64(faker.Commerce().Price()),
 		ClosedAT:      utils.NOW.Add(time.Hour * 24).Format(time.RFC3339),
-		Labels:        []string{faker.RandomString(10)},
+		Labels:        []repository.LabelQuery{},
 	}
 
-	rv := reqPOST(AddProductEndpoint, payload, token)
+	rv := reqPOST(endpoint.AddProduct, payload, token)
 	if rv.Code != 0 {
 		return nil, errors.New("Failed creating product")
 	}
-	product := service.Product{}
+	product := types.Product{}
 	resMap := rv.Result.(map[string]interface{})
 	mapstructure.Decode(resMap, &product)
 
@@ -159,11 +166,11 @@ func createProduct(token string) (interface{}, error) {
 
 func cleanUsers() {
 	userRepo := repository.UserRepository{
-		UserQs: models.NewUserQuerySet(models.DB),
+		UserQs: models.NewUserQuerySet(app.DB),
 	}
 
 	productRepo := repository.ProductRepository{
-		ProductQs: models.NewProductQuerySet(models.DB),
+		ProductQs: models.NewProductQuerySet(app.DB),
 	}
 
 	userRepo.CleanUpUser()
