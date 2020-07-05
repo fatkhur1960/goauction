@@ -1,1 +1,1 @@
-web: bin/gouaction
+web: bin/goauction

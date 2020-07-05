@@ -12,6 +12,7 @@ import (
 	"github.com/fatkhur1960/goauction/app/router"
 	"github.com/fatkhur1960/goauction/app/utils"
 	"github.com/fatkhur1960/goauction/docs"
+	"github.com/fatkhur1960/goauction/system/monitor"
 	"github.com/fatkhur1960/goauction/system/queue"
 	"github.com/fatkhur1960/goauction/system/socket"
 	"github.com/gin-contrib/cors"
@@ -46,7 +47,7 @@ func main() {
 
 	QueueDispatcher := queue.NewDispatcher(4)
 	QueueDispatcher.Run()
-	// go monitor.StartMonitors()
+	go monitor.StartMonitors()
 
 	gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, _ int) {
 		log.Printf("%v] + endpoint %v %v\n", utils.ReplacePackages(handlerName), httpMethod, absolutePath)
