@@ -47,6 +47,8 @@ testdb-drop:
 
 testdb-reset: testdb-drop testdb-create testdb-migrate
 
+release-heroku: copy-config prepare db-migrate
+
 build-deps:
 	dep ensure -v
 
