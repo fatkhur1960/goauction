@@ -2,7 +2,7 @@
 -- +migrate Up
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    store_id BIGINT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
     product_name VARCHAR(100) NOT NULL,
     "desc" TEXT NOT NULL,
     condition INT NOT NULL DEFAULT 0, -- 0: SECOND / 1: NEW

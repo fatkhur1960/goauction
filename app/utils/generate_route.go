@@ -164,22 +164,28 @@ func GenerateRoutes() bool {
 			var validator string
 			if e.Param != nil {
 				param := fmt.Sprintf("service.%s", e.Param)
+				bindType := "binding.JSON"
 				if strings.HasPrefix(e.Param.(string), "*repo") {
 					param = e.Param.(string)
 				}
-
 				param = strings.ReplaceAll(param, "*", "")
 
-				validator = "func(c *gin.Context) {\n"
-				// validator += fmt.Sprintf("\tquery := &%s{}\n", param)
-				validator += fmt.Sprintf("\tmid.RequestValidator(c, &%s{})\n", param)
-				validator += "\t}, "
+				if strings.ToLower(e.Method) == "get" {
+					bindType = "binding.Query"
+				}
+
 				validator += "func(c *gin.Context) {\n"
-				validator += fmt.Sprintf("\tquery, ok := c.MustGet(\"validated\").(*%s)\n", param)
-				validator += "if !ok {\n log.Println(\"validated not set\")\n}\n"
-				validator += fmt.Sprintf("\t%s.%s(c, query)\n}", varName, e.Name)
+				validator += fmt.Sprintf("\t\t\t\t%s.Lock()\n", varName)
+				validator += fmt.Sprintf("\t\t\t\tdefer %s.Unlock()\n", varName)
+				validator += fmt.Sprintf("\t\t\t\tquery, err := mid.ReqValidate(c, &%s{}, %s)\n", param, bindType)
+				validator += fmt.Sprintf("\t\t\t\tif err != nil {\n\t\t\t\t\treturn\n\t\t\t\t}\n")
+				validator += fmt.Sprintf("\t\t\t\t%s.%s(c, query.(*%s))\n\t\t\t}", varName, e.Name, param)
 			} else {
-				validator = fmt.Sprintf("%s.%s", varName, e.Name)
+				validator += "func(c *gin.Context) {\n"
+				validator += fmt.Sprintf("\t\t\t\t%s.Lock()\n", varName)
+				validator += fmt.Sprintf("\t\t\t\tdefer %s.Unlock()\n", varName)
+				validator += fmt.Sprintf("\t\t\t\t%s.%s(c)\n", varName, e.Name)
+				validator += fmt.Sprint("\t\t\t\t}")
 			}
 			if e.Auth {
 				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", mid.RequiresUserAuth, %s)\n", groupName, e.Method, e.Path, validator)
@@ -187,7 +193,7 @@ func GenerateRoutes() bool {
 				body += fmt.Sprintf("\t\t\t%s.%s(\"%s\", %s)\n", groupName, strings.ToTitle(e.Method), e.Path, validator)
 			}
 
-			constLine += fmt.Sprintf("\t// %sEndpoint for testing only\n", e.Name)
+			constLine += fmt.Sprintf("\t// %s endpoint for testing only\n", e.Name)
 			constLine += fmt.Sprintf("\t%s = \"%s%s\"\n", e.Name, route.Base, e.Path)
 		}
 

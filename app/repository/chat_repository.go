@@ -18,7 +18,6 @@ type ChatRepository struct {
 // ChatMessageQuery --
 type ChatMessageQuery struct {
 	ChatID         int64  `json:"chat_id" binding:"required"`
-	SenderID       int64  `json:"sender_id" binding:"required"`
 	ReceiverID     int64  `json:"receiver_id" binding:"required"`
 	Text           string `json:"text" binding:"required"`
 	AttachmentKind int    `json:"attachment_kind"`
@@ -51,10 +50,10 @@ func (r *ChatRepository) CreateChat(initiatorID int64, subscriberID int64) (mode
 }
 
 // CreateChatMessage create new chat message
-func (r *ChatRepository) CreateChatMessage(query ChatMessageQuery) (models.Message, error) {
+func (r *ChatRepository) CreateChatMessage(senderID int64, query ChatMessageQuery) (models.Message, error) {
 	message := models.Message{
 		ChatID:         query.ChatID,
-		SenderID:       query.SenderID,
+		SenderID:       senderID,
 		ReceiverID:     query.ReceiverID,
 		Text:           query.Text,
 		AttachmentKind: query.AttachmentKind,
@@ -66,7 +65,7 @@ func (r *ChatRepository) CreateChatMessage(query ChatMessageQuery) (models.Messa
 	{
 		u1History := models.ChatHistory{
 			ChatID:    query.ChatID,
-			OwnerID:   query.SenderID,
+			OwnerID:   senderID,
 			MessageID: message.ID,
 		}
 		u1History.Create(app.DB)
@@ -88,8 +87,8 @@ func (r *ChatRepository) CreateChatMessage(query ChatMessageQuery) (models.Messa
 	return message, nil
 }
 
-// GetUserChats listing user chats
-func (r *ChatRepository) GetUserChats(userID int64, offset int, limit int) ([]models.Chat, int, error) {
+// GetUserChatRooms listing user chats
+func (r *ChatRepository) GetUserChatRooms(userID int64, offset int, limit int) ([]models.Chat, int, error) {
 	chats := []models.Chat{}
 	count := 0
 	dao := r.chatQs.GetDB().Where("initiator_id = ?", userID).Or("subscriber_id = ?", userID)

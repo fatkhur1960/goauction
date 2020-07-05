@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/fatkhur1960/goauction/app"
 	"github.com/fatkhur1960/goauction/app/models"
+	"github.com/fatkhur1960/goauction/app/repository"
+	"github.com/fatkhur1960/goauction/app/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 // CurrentUser global variable for authenticated user
@@ -19,22 +24,39 @@ var (
 )
 
 type authHeader struct {
+	sync.Mutex
 	Authorization string `binding:"required"`
 }
 
-// RequestValidator for params/uri/json validator
-func RequestValidator(c *gin.Context, query interface{}) {
-	if err := c.ShouldBindJSON(query); err != nil {
-		apiResult.Error(c, http.StatusBadRequest, err.Error())
-		return
+// ReqValidate for handle request with params/json validator
+func ReqValidate(c *gin.Context, query interface{}, bindType binding.Binding) (interface{}, error) {
+	if err := c.ShouldBindWith(query, bindType); err != nil {
+		apiResult.Error(c, http.StatusBadRequest, utils.ParseError(err.Error()))
+		c.Abort()
+		return nil, err
 	}
-	c.Set("validated", query)
-	c.Next()
+
+	return query, nil
+}
+
+// MethodValidator for handling request method
+func MethodValidator() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		re := regexp.MustCompile("GET|POST")
+		if !re.MatchString(c.Request.Method) {
+			apiResult.Error(c, http.StatusMethodNotAllowed, "Request method not allowed")
+			return
+		}
+
+		c.Next()
+	}
 }
 
 // RequiresUserAuth middleware
 func RequiresUserAuth(c *gin.Context) {
 	auth := authHeader{}
+	authRepo := repository.NewAuthRepository()
+	userRepo := repository.NewUserRepository()
 	const bearerScheme = "Bearer "
 	if err := c.ShouldBindHeader(&auth); err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Header `Authorization` is not set")
@@ -43,7 +65,7 @@ func RequiresUserAuth(c *gin.Context) {
 	}
 
 	tokenString := strings.ReplaceAll(auth.Authorization, bearerScheme, "")
-	accessToken := models.AccessToken{}
+	accessToken, atErr := authRepo.GetAccessToken(tokenString)
 
 	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//Make sure that the token method conform to "SigningMethodHMAC"
@@ -56,7 +78,7 @@ func RequiresUserAuth(c *gin.Context) {
 	if err != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Invalid Access Token")
 		c.Abort()
-	} else if err := models.NewAccessTokenQuerySet(app.DB).TokenEq(tokenString).One(&accessToken); err != nil {
+	} else if atErr != nil {
 		apiResult.Error(c, http.StatusUnauthorized, "Unauthorized")
 		c.Abort()
 	} else if accessToken.IsExpired() {
@@ -64,7 +86,6 @@ func RequiresUserAuth(c *gin.Context) {
 		c.Abort()
 	}
 
-	CurrentUser = models.User{}
-	models.NewUserQuerySet(app.DB).IDEq(accessToken.UserID).One(&CurrentUser)
+	CurrentUser, _ = userRepo.GetByID(accessToken.UserID)
 	c.Next()
 }

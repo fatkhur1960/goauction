@@ -11,10 +11,14 @@
             "request": "launch",
             "mode": "test",
             "program": "${workspaceFolder}/tests",
-            "args": [
-                "-test.run",
-                "TestPasswordHashing"
-            ]
+            "env": {
+                "DB_HOST": "localhost",
+                "DB_PORT": 5432,
+                "DB_NAME_TEST": "goauction_db_test",
+                "DB_USER": "master",
+                "SSL_MODE": "disable",
+                "DB_PASSWORD": null
+            },
         },
         {
             "name": "Launch Server",
@@ -22,7 +26,15 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/goauction.go",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "DB_HOST": "localhost",
+                "DB_PORT": 5432,
+                "DB_NAME": "goauction_db",
+                "DB_USER": "master",
+                "SSL_MODE": "disable",
+                "DB_PASSWORD": null
+            },
         },
         {
             "name": "Launch Unit Test",
@@ -33,6 +45,14 @@
             "envFile": "${workspaceFolder}/.env",
             "args": ["test","-v","./tests","-p=1"],
             "program": "${workspaceFolder}/tests",  
+            "env": {
+                "DB_HOST": "localhost",
+                "DB_PORT": 5432,
+                "DB_NAME_TEST": "goauction_db_test",
+                "DB_USER": "master",
+                "SSL_MODE": "disable",
+                "DB_PASSWORD": null
+            },
         },
     ]
 }

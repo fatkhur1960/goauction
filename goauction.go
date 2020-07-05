@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/fatkhur1960/goauction/app"
@@ -34,11 +37,12 @@ func main() {
 	docs.SwaggerInfo.Description = "GoAuction API Documentation"
 	docs.SwaggerInfo.Version = "1.0"
 	docs.SwaggerInfo.BasePath = "/api"
-	docs.SwaggerInfo.Host = "localhost:8081"
+	docs.SwaggerInfo.Host = fmt.Sprintf(":%v", os.Getenv("PORT"))
 	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 
 	// connect with database
 	app.ConnectDatabase()
+	defer app.CloseDatabase()
 
 	QueueDispatcher := queue.NewDispatcher(4)
 	QueueDispatcher.Run()
@@ -52,8 +56,9 @@ func main() {
 	go wsHandler.Serve()
 	defer wsHandler.Close()
 
-	app := router.GetGeneratedRoutes(gin.Default())
-	app.Use(cors.New(cors.Config{
+	goauction := router.GetGeneratedRoutes(gin.Default())
+	goauction.Use(mid.MethodValidator())
+	goauction.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin"},
@@ -61,9 +66,19 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	app.GET("/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
-	app.POST("/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
-	app.Handle("WS", "/socket.io/*any", gin.WrapH(wsHandler))
-	app.Handle("WSS", "/socket.io/*any", gin.WrapH(wsHandler))
-	app.Run(docs.SwaggerInfo.Host)
+	goauction.GET("/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
+	goauction.POST("/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
+	goauction.Handle("WS", "/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
+	goauction.Handle("WSS", "/socket.io/*any", mid.RequiresUserAuth, gin.WrapH(wsHandler))
+	// goauction.Run(docs.SwaggerInfo.Host)
+
+	srv := &http.Server{
+		Handler:      goauction,
+		Addr:         docs.SwaggerInfo.Host,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	fmt.Println("\nListening on", docs.SwaggerInfo.Host)
+	log.Fatal(srv.ListenAndServe())
 }

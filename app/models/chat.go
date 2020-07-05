@@ -52,9 +52,9 @@ func (c *Chat) ToAPI(userID int64) types.Chat {
 	display := UserSimple{}
 	dao := app.DB.Select("id, full_name, avatar")
 	if c.InitiatorID == userID {
-		dao.Where("user_id = ?", c.SubscriberID).First(&display)
+		dao.Where("id = ?", c.SubscriberID).First(&display)
 	} else {
-		dao.Where("user_id = ?", c.InitiatorID).First(&display)
+		dao.Where("id = ?", c.InitiatorID).First(&display)
 	}
 
 	return types.Chat{

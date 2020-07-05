@@ -1,7 +1,6 @@
 package test
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/fatkhur1960/goauction/app/service"
@@ -10,7 +9,7 @@ import (
 )
 
 func TestAuthorizeUser(t *testing.T) {
-	email, passhash := generateUserThenActivate()
+	_, email, passhash := generateUserThenActivate()
 	payload := service.AuthQuery{
 		Email:    email,
 		Passhash: passhash,
@@ -21,8 +20,6 @@ func TestAuthorizeUser(t *testing.T) {
 
 	rMap := rv.Result.(map[string]interface{})
 	assert.NotEqual(t, rMap["token"], nil)
-
-	cleanUsers()
 }
 
 func TestUnauthorizeUser(t *testing.T) {
@@ -32,5 +29,5 @@ func TestUnauthorizeUser(t *testing.T) {
 	assert.Equal(t, rv.Code, 0)
 
 	rv1 := reqGET(endpoint.MeInfo, token)
-	assert.Equal(t, rv1.Code, http.StatusUnauthorized)
+	assert.Equal(t, rv1.Code, 4010)
 }

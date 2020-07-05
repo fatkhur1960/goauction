@@ -5,11 +5,11 @@ import (
 	mid "github.com/fatkhur1960/goauction/app/middleware"
 	repo "github.com/fatkhur1960/goauction/app/repository"
 	"github.com/fatkhur1960/goauction/app/service"
-	"log"
 
 	// import swagger doc
 	_ "github.com/fatkhur1960/goauction/docs"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
@@ -18,16 +18,26 @@ import (
 func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 	apiGroup := router.Group("/api")
 	{
-		// Do not edit this code by your hand
-		// this code generate automatically when program running
 		// @StartCodeBlocks
 
 		// Generate route for AuthService
 		authService := service.NewAuthService()
 		authServiceGroup := apiGroup.Group("/auth/v1")
 		{
-			authServiceGroup.POST("/authorize", authService.AuthorizeUser)
-			authServiceGroup.POST("/unauthorize", mid.RequiresUserAuth, authService.UnauthorizeUser)
+			authServiceGroup.POST("/authorize", func(c *gin.Context) {
+				authService.Lock()
+				defer authService.Unlock()
+				query, err := mid.ReqValidate(c, &service.AuthQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				authService.AuthorizeUser(c, query.(*service.AuthQuery))
+			})
+			authServiceGroup.POST("/unauthorize", mid.RequiresUserAuth, func(c *gin.Context) {
+				authService.Lock()
+				defer authService.Unlock()
+				authService.UnauthorizeUser(c)
+				})
 		}
 
 		// Generate route for ChatService
@@ -35,14 +45,41 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 		chatServiceGroup := apiGroup.Group("/chat/v1")
 		{
 			chatServiceGroup.POST("/new-room", mid.RequiresUserAuth, func(c *gin.Context) {
-	mid.RequestValidator(c, &service.CreateChatQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*service.CreateChatQuery)
-if !ok {
- log.Println("validated not set")
-}
-	chatService.CreateChatRoom(c, query)
-})
+				chatService.Lock()
+				defer chatService.Unlock()
+				query, err := mid.ReqValidate(c, &service.CreateChatQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				chatService.CreateChatRoom(c, query.(*service.CreateChatQuery))
+			})
+			chatServiceGroup.GET("/list", mid.RequiresUserAuth, func(c *gin.Context) {
+				chatService.Lock()
+				defer chatService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
+				if err != nil {
+					return
+				}
+				chatService.ListChatRooms(c, query.(*service.QueryEntries))
+			})
+			chatServiceGroup.POST("/send-message", mid.RequiresUserAuth, func(c *gin.Context) {
+				chatService.Lock()
+				defer chatService.Unlock()
+				query, err := mid.ReqValidate(c, &repo.ChatMessageQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				chatService.SendMessage(c, query.(*repo.ChatMessageQuery))
+			})
+			chatServiceGroup.GET("/list-messages", mid.RequiresUserAuth, func(c *gin.Context) {
+				chatService.Lock()
+				defer chatService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryMessages{}, binding.Query)
+				if err != nil {
+					return
+				}
+				chatService.ListChatMessages(c, query.(*service.QueryMessages))
+			})
 		}
 
 		// Generate route for ProductService
@@ -50,46 +87,86 @@ if !ok {
 		productServiceGroup := apiGroup.Group("/product/v1")
 		{
 			productServiceGroup.POST("/add", mid.RequiresUserAuth, func(c *gin.Context) {
-	mid.RequestValidator(c, &repo.NewProductQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*repo.NewProductQuery)
-if !ok {
- log.Println("validated not set")
-}
-	productService.AddProduct(c, query)
-})
-			productServiceGroup.GET("/list", mid.RequiresUserAuth, productService.ListProduct)
-			productServiceGroup.GET("/me/list", mid.RequiresUserAuth, productService.ListMyProduct)
-			productServiceGroup.GET("/detail/:id", mid.RequiresUserAuth, productService.DetailProduct)
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &repo.NewProductQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.AddProduct(c, query.(*repo.NewProductQuery))
+			})
+			productServiceGroup.GET("/list", func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
+				if err != nil {
+					return
+				}
+				productService.ListProduct(c, query.(*service.QueryEntries))
+			})
+			productServiceGroup.GET("/me/list", mid.RequiresUserAuth, func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
+				if err != nil {
+					return
+				}
+				productService.ListMyProduct(c, query.(*service.QueryEntries))
+			})
+			productServiceGroup.GET("/detail", mid.RequiresUserAuth, func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.IDQuery{}, binding.Query)
+				if err != nil {
+					return
+				}
+				productService.DetailProduct(c, query.(*service.IDQuery))
+			})
 			productServiceGroup.POST("/update", mid.RequiresUserAuth, func(c *gin.Context) {
-	mid.RequestValidator(c, &repo.UpdateProductQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*repo.UpdateProductQuery)
-if !ok {
- log.Println("validated not set")
-}
-	productService.UpdateProduct(c, query)
-})
-			productServiceGroup.POST("/delete/:id", mid.RequiresUserAuth, productService.DeleteProduct)
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &repo.UpdateProductQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.UpdateProduct(c, query.(*repo.UpdateProductQuery))
+			})
+			productServiceGroup.POST("/delete", mid.RequiresUserAuth, func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.IDQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.DeleteProduct(c, query.(*service.IDQuery))
+			})
 			productServiceGroup.POST("/bid", mid.RequiresUserAuth, func(c *gin.Context) {
-	mid.RequestValidator(c, &service.BidProductQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*service.BidProductQuery)
-if !ok {
- log.Println("validated not set")
-}
-	productService.BidProduct(c, query)
-})
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.BidProductQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.BidProduct(c, query.(*service.BidProductQuery))
+			})
 			productServiceGroup.POST("/reopen", mid.RequiresUserAuth, func(c *gin.Context) {
-	mid.RequestValidator(c, &service.ReOpenBidQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*service.ReOpenBidQuery)
-if !ok {
- log.Println("validated not set")
-}
-	productService.ReOpenProductBid(c, query)
-})
-			productServiceGroup.POST("/mark-as-sold/:id", mid.RequiresUserAuth, productService.MarkProductAsSold)
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.ReOpenBidQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.ReOpenProductBid(c, query.(*service.ReOpenBidQuery))
+			})
+			productServiceGroup.POST("/mark-as-sold", mid.RequiresUserAuth, func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.IDQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				productService.MarkProductAsSold(c, query.(*service.IDQuery))
+			})
 		}
 
 		// Generate route for UserService
@@ -97,28 +174,92 @@ if !ok {
 		userServiceGroup := apiGroup.Group("/user/v1")
 		{
 			userServiceGroup.POST("/register", func(c *gin.Context) {
-	mid.RequestValidator(c, &service.RegisterUserQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*service.RegisterUserQuery)
-if !ok {
- log.Println("validated not set")
-}
-	userService.RegisterUser(c, query)
-})
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.RegisterUserQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.RegisterUser(c, query.(*service.RegisterUserQuery))
+			})
 			userServiceGroup.POST("/activate", func(c *gin.Context) {
-	mid.RequestValidator(c, &service.ActivateUserQuery{})
-	}, func(c *gin.Context) {
-	query, ok := c.MustGet("validated").(*service.ActivateUserQuery)
-if !ok {
- log.Println("validated not set")
-}
-	userService.ActivateUser(c, query)
-})
-			userServiceGroup.GET("/me/info", mid.RequiresUserAuth, userService.MeInfo)
-			userServiceGroup.POST("/me/info", mid.RequiresUserAuth, userService.UpdateUserInfo)
-			userServiceGroup.GET("/bids", mid.RequiresUserAuth, userService.ListUserBids)
-			userServiceGroup.GET("/notifs", mid.RequiresUserAuth, userService.ListUserNotifs)
-			userServiceGroup.POST("/notifs/read", mid.RequiresUserAuth, userService.MarkAsReadNotif)
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.ActivateUserQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.ActivateUser(c, query.(*service.ActivateUserQuery))
+			})
+			userServiceGroup.GET("/me/info", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				userService.MeInfo(c)
+				})
+			userServiceGroup.POST("/me/info", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &repo.UpdateUserQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.UpdateUserInfo(c, query.(*repo.UpdateUserQuery))
+			})
+			userServiceGroup.GET("/me/store", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				userService.GetUserStore(c)
+				})
+			userServiceGroup.POST("/become-auctioneer", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.BecomeAuctioneerQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.BecomeAuctioneer(c, query.(*service.BecomeAuctioneerQuery))
+			})
+			userServiceGroup.GET("/bids", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
+				if err != nil {
+					return
+				}
+				userService.ListUserBids(c, query.(*service.QueryEntries))
+			})
+			userServiceGroup.POST("/connect-create", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.ConnectCreateQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.ConnectCreate(c, query.(*service.ConnectCreateQuery))
+			})
+			userServiceGroup.POST("/connect-remove", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				userService.ConnectRemove(c)
+				})
+			userServiceGroup.GET("/notifs", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
+				if err != nil {
+					return
+				}
+				userService.ListUserNotifs(c, query.(*service.QueryEntries))
+			})
+			userServiceGroup.POST("/notifs/read", mid.RequiresUserAuth, func(c *gin.Context) {
+				userService.Lock()
+				defer userService.Unlock()
+				query, err := mid.ReqValidate(c, &service.ReadNotifQuery{}, binding.JSON)
+				if err != nil {
+					return
+				}
+				userService.MarkAsReadNotif(c, query.(*service.ReadNotifQuery))
+			})
 		}
 
 		// @EndCodeBlocks

@@ -13,9 +13,9 @@ import (
 
 func TestRegisterUser(t *testing.T) {
 	u := service.RegisterUserQuery{
-		FullName: "a",
-		Email:    "a",
-		PhoneNum: "a",
+		FullName: faker.Name().Name(),
+		Email:    faker.Internet().Email(),
+		PhoneNum: faker.PhoneNumber().CellPhone(),
 	}
 	rv := reqPOST(endpoint.RegisterUser, u)
 	assert.Equal(t, rv.Code, 0)

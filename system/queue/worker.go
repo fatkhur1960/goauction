@@ -1,8 +1,6 @@
 package queue
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
 	"reflect"
 
@@ -33,12 +31,11 @@ func (w Worker) Start() {
 			select {
 			case job := <-w.JobChannel:
 				if gin.IsDebugging() {
-					data, _ := json.Marshal(&job)
-					log.Println("Worker] Got Event:", reflect.TypeOf(job).String(), string(data))
+					log.Println("Worker] Got Event:", reflect.TypeOf(job).String())
 				}
 				// we have received a work request.
 				if err := job.Handle(); err != nil {
-					fmt.Printf("Error in job: %s\n", err.Error())
+					log.Println("Worker] Got Error:", err.Error())
 				}
 			}
 		}

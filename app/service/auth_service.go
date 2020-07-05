@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"sync"
 
 	mid "github.com/fatkhur1960/goauction/app/middleware"
 	repo "github.com/fatkhur1960/goauction/app/repository"
@@ -11,7 +12,9 @@ import (
 type (
 	// AuthService for Authentication implementation
 	AuthService struct {
+		sync.Mutex
 		authRepo *repo.AuthRepository
+		userRepo *repo.UserRepository
 	}
 
 	// AuthQuery definisi query untuk login
@@ -26,6 +29,7 @@ type (
 func NewAuthService() *AuthService {
 	return &AuthService{
 		authRepo: repo.NewAuthRepository(),
+		userRepo: repo.NewUserRepository(),
 	}
 }
 
@@ -39,9 +43,7 @@ func NewAuthService() *AuthService {
 // @Success 200 {object} app.Result{result=models.AccessToken}
 // @Failure 500 {object} app.Result
 // @Router /authorize [post]
-func (s *AuthService) AuthorizeUser(c *gin.Context) {
-	var query AuthQuery
-	validateRequest(c, &query)
+func (s *AuthService) AuthorizeUser(c *gin.Context, query *AuthQuery) {
 	token, err := s.authRepo.AuthorizeUser(query.Email, query.Passhash)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
@@ -62,7 +64,7 @@ func (s *AuthService) AuthorizeUser(c *gin.Context) {
 // @Failure 401 {object} app.Result
 // @Router /unauthorize [post] [auth]
 func (s *AuthService) UnauthorizeUser(c *gin.Context) {
-	err := s.authRepo.TokenQs.UserIDEq(mid.CurrentUser.ID).Delete()
+	err := s.authRepo.UnauthorizeUser(mid.CurrentUser.ID)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return

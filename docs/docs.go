@@ -283,6 +283,36 @@ var doc = `{
                 }
             }
         },
+        "/become-auctioneer": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserService"
+                ],
+                "summary": "Endpoint untuk mengupgrade user jadi pelelang",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "json"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
         "/bid": {
             "post": {
                 "security": [
@@ -348,7 +378,166 @@ var doc = `{
                 }
             }
         },
-        "/delete/:id": {
+        "/bids": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "UserService"
+                ],
+                "summary": "Endpoint untuk mendapatkan bid history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/service.EntriesResult"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "entries": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/types.Product"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/connect-create": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserService"
+                ],
+                "summary": "Endpoint untuk membuat app id digunakan untuk kebutuhan push notif",
+                "parameters": [
+                    {
+                        "description": "AppID",
+                        "name": "app_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ProviderName",
+                        "name": "provider_name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/connect-remove": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "UserService"
+                ],
+                "summary": "Endpoint untuk menghapus app id dari db",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/delete": {
             "post": {
                 "security": [
                     {
@@ -367,11 +556,13 @@ var doc = `{
                 "summary": "Endpoint untuk menghapus product",
                 "parameters": [
                     {
-                        "type": "integer",
                         "description": "ID",
                         "name": "id",
-                        "in": "path",
-                        "required": true
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -402,7 +593,7 @@ var doc = `{
                 }
             }
         },
-        "/detail/:id": {
+        "/detail": {
             "get": {
                 "security": [
                     {
@@ -424,7 +615,7 @@ var doc = `{
                         "type": "integer",
                         "description": "ID",
                         "name": "id",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -538,7 +729,7 @@ var doc = `{
                                                         "entries": {
                                                             "type": "array",
                                                             "items": {
-                                                                "$ref": "#/definitions/service.Product"
+                                                                "$ref": "#/definitions/types.Product"
                                                             }
                                                         }
                                                     }
@@ -559,7 +750,95 @@ var doc = `{
                 }
             }
         },
-        "/mark-as-sold/:id": {
+        "/list-messages": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ProductService"
+                ],
+                "summary": "Endpoint untuk menampilkan list chat room",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/service.EntriesResult"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "entries": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/models.Message"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/mark-as-sold": {
             "post": {
                 "security": [
                     {
@@ -578,11 +857,13 @@ var doc = `{
                 "summary": "Endpoint digunakan untuk menandai produk sudah terjual",
                 "parameters": [
                     {
-                        "type": "integer",
                         "description": "ID",
                         "name": "id",
-                        "in": "path",
-                        "required": true
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -813,12 +1094,105 @@ var doc = `{
                                                         "entries": {
                                                             "type": "array",
                                                             "items": {
-                                                                "$ref": "#/definitions/service.Product"
+                                                                "$ref": "#/definitions/types.Product"
                                                             }
                                                         }
                                                     }
                                                 }
                                             ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/store": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserService"
+                ],
+                "summary": "Endpoint untuk mendapatkan user store",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/models.Store"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/new-room": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ChatService"
+                ],
+                "summary": "Endpoint untuk membuat chat room",
+                "parameters": [
+                    {
+                        "description": "UserID",
+                        "name": "user_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/models.Chat"
                                         }
                                     }
                                 }
@@ -1097,6 +1471,98 @@ var doc = `{
                 }
             }
         },
+        "/send-message": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ChatService"
+                ],
+                "summary": "Endpoint untuk menambahkan product",
+                "parameters": [
+                    {
+                        "description": "ChatID",
+                        "name": "chat_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "ReceiverID",
+                        "name": "receiver_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Text",
+                        "name": "text",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "AttachmentKind",
+                        "name": "attachment_kind",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "AttachmentData",
+                        "name": "attachment_data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/models.Message"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
         "/unauthorize": {
             "post": {
                 "security": [
@@ -1312,17 +1778,55 @@ var doc = `{
                 }
             }
         },
-        "models.BidStatus": {
+        "models.Chat": {
             "type": "object",
             "properties": {
-                "bid_count": {
+                "id": {
                     "type": "integer"
                 },
-                "latest_bid_price": {
-                    "type": "number"
-                },
-                "latest_user_id": {
+                "initiator_id": {
                     "type": "integer"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "subscriber_id": {
+                    "type": "integer"
+                },
+                "ts": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Message": {
+            "type": "object",
+            "properties": {
+                "attachment_data": {
+                    "type": "string"
+                },
+                "attachment_kind": {
+                    "type": "integer"
+                },
+                "chat_id": {
+                    "type": "integer"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "receiver_id": {
+                    "type": "integer"
+                },
+                "sender_id": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
                 }
             }
         },
@@ -1374,7 +1878,7 @@ var doc = `{
                 "start_price": {
                     "type": "number"
                 },
-                "user_id": {
+                "store_id": {
                     "type": "integer"
                 }
             }
@@ -1394,10 +1898,6 @@ var doc = `{
                 "product_id": {
                     "type": "integer"
                 },
-                "user": {
-                    "type": "object",
-                    "$ref": "#/definitions/models.User"
-                },
                 "user_id": {
                     "type": "integer"
                 },
@@ -1409,6 +1909,9 @@ var doc = `{
         "models.ProductImage": {
             "type": "object",
             "properties": {
+                "id": {
+                    "type": "integer"
+                },
                 "image_url": {
                     "type": "string"
                 }
@@ -1418,6 +1921,9 @@ var doc = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "type": "string"
+                },
+                "value": {
                     "type": "string"
                 }
             }
@@ -1441,6 +1947,50 @@ var doc = `{
                     "type": "string"
                 },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Store": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "announcement": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "info": {
+                    "type": "string"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "product_count": {
+                    "type": "integer"
+                },
+                "province": {
+                    "type": "string"
+                },
+                "regency": {
+                    "type": "string"
+                },
+                "sub_district": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
+                },
+                "village": {
                     "type": "string"
                 }
             }
@@ -1520,15 +2070,37 @@ var doc = `{
                 }
             }
         },
-        "service.Product": {
+        "types.Chat": {
+            "type": "object",
+            "properties": {
+                "display": {
+                    "type": "object"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "initiator_id": {
+                    "type": "integer"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "subscriber_id": {
+                    "type": "integer"
+                },
+                "ts": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.Product": {
             "type": "object",
             "properties": {
                 "bid_multpl": {
                     "type": "number"
                 },
                 "bid_status": {
-                    "type": "object",
-                    "$ref": "#/definitions/models.BidStatus"
+                    "type": "object"
                 },
                 "closed": {
                     "type": "boolean"
@@ -1552,16 +2124,10 @@ var doc = `{
                     "type": "integer"
                 },
                 "labels": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ProductLabel"
-                    }
+                    "type": "object"
                 },
                 "product_images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ProductImage"
-                    }
+                    "type": "object"
                 },
                 "product_name": {
                     "type": "string"

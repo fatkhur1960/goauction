@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mid "github.com/fatkhur1960/goauction/app/middleware"
@@ -19,7 +21,9 @@ import (
 type (
 	// ProductService api product implementation
 	ProductService struct {
+		sync.Mutex
 		productRepo *repo.ProductRepository
+		storeRepo   *repo.StoreRepository
 		event       *event.Listener
 	}
 
@@ -41,6 +45,7 @@ type (
 func NewProductService() *ProductService {
 	return &ProductService{
 		productRepo: repo.NewProductRepository(),
+		storeRepo:   repo.NewStoreRepository(),
 		event:       event.NewListener(queue.JobQueue),
 	}
 }
@@ -64,13 +69,22 @@ func NewProductService() *ProductService {
 // @Failure 400 {object} app.Result
 // @Router /add [post] [auth]
 func (s *ProductService) AddProduct(c *gin.Context, query *repo.NewProductQuery) {
-	product, err := s.productRepo.CreateProduct(mid.CurrentUser.ID, *query)
+	store, e := s.storeRepo.GetByID(query.StoreID)
+	if e != nil {
+		APIResult.Error(c, http.StatusBadRequest, "Store ID tidak valid")
+		return
+	} else if store.OwnerID != mid.CurrentUser.ID {
+		APIResult.Error(c, http.StatusBadRequest, "Anda tidak dapat menambahkan product ke store ini")
+		return
+	}
+
+	product, err := s.productRepo.CreateProduct(*query)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	APIResult.Success(c, product.(*models.Product).ToAPI(mid.CurrentUser.ID))
+	APIResult.Success(c, product.ToAPI(&mid.CurrentUser.ID))
 }
 
 // ListProduct docs
@@ -83,25 +97,42 @@ func (s *ProductService) AddProduct(c *gin.Context, query *repo.NewProductQuery)
 // @Param offset query int true "Offset"
 // @Param query query string false "Query"
 // @Param filter query string false "Filter"
-// @Success 200 {object} app.Result{result=EntriesResult{entries=[]service.Product}}
+// @Success 200 {object} app.Result{result=EntriesResult{entries=[]types.Product}}
 // @Failure 400 {object} app.Result
-// @Router /list [get] [auth]
-func (s *ProductService) ListProduct(c *gin.Context) {
-	query := &QueryEntries{}
-	if query.validate(c, types.ValidateQuery) != nil {
-		return
+// @Router /list [get]
+func (s *ProductService) ListProduct(c *gin.Context, query *QueryEntries) {
+	userID := int64(0)
+	closed := false
+	sold := false
+	if query.Filter != "" {
+		args := strings.Split(query.Filter, ",")
+		for _, arg := range args {
+			if strings.HasPrefix(arg, "user_id:") {
+				res, _ := strconv.Atoi(arg[len("user_id:"):])
+				userID = int64(res)
+			} else if strings.HasPrefix(arg, "closed:") {
+				res, _ := strconv.ParseBool(arg[len("closed:"):])
+				closed = res
+			} else if strings.HasPrefix(arg, "sold:") {
+				res, _ := strconv.ParseBool(arg[len("sold:"):])
+				sold = res
+			}
+		}
 	}
 
-	entries := []types.Product{}
 	filter := repo.ProductFilter{
 		Query:  query.Query,
 		Offset: query.Offset,
 		Limit:  query.Limit,
+		UserID: userID,
+		Sold:   sold,
+		Closed: closed,
 	}
-	products, count, _ := s.productRepo.GetProductList(filter)
 
+	products, count, _ := s.productRepo.GetProductList(filter)
+	entries := []types.Product{}
 	for _, product := range products {
-		entries = append(entries, product.ToAPI(mid.CurrentUser.ID))
+		entries = append(entries, product.ToAPI(&mid.CurrentUser.ID))
 	}
 
 	APIResult.Success(c, EntriesResult{entries, count})
@@ -116,15 +147,10 @@ func (s *ProductService) ListProduct(c *gin.Context) {
 // @Param offset query int true "Offset"
 // @Param query query string false "Query"
 // @Param filter query string false "Filter"
-// @Success 200 {object} app.Result{result=EntriesResult{entries=[]service.Product}}
+// @Success 200 {object} app.Result{result=EntriesResult{entries=[]types.Product}}
 // @Failure 400 {object} app.Result
 // @Router /me/list [get] [auth]
-func (s *ProductService) ListMyProduct(c *gin.Context) {
-	query := &QueryEntries{}
-	if query.validate(c, types.ValidateQuery) != nil {
-		return
-	}
-
+func (s *ProductService) ListMyProduct(c *gin.Context, query *QueryEntries) {
 	entries := []types.Product{}
 	closed, sold := false, false
 
@@ -147,7 +173,7 @@ func (s *ProductService) ListMyProduct(c *gin.Context) {
 	products, count, _ := s.productRepo.GetMyProductList(filter)
 
 	for _, product := range products {
-		entries = append(entries, product.ToAPI(mid.CurrentUser.ID))
+		entries = append(entries, product.ToAPI(&mid.CurrentUser.ID))
 	}
 
 	APIResult.Success(c, EntriesResult{entries, count})
@@ -159,16 +185,11 @@ func (s *ProductService) ListMyProduct(c *gin.Context) {
 // @Summary Endpoint untuk menampilkan detail product
 // @Accept json
 // @Produce json
-// @Param id path int true "ID"
-// @Success 200 {object} app.Result{result=EntriesResult{entries=[]models.Product}}
+// @Param id query int true "ID"
+// @Success 200 {object} app.Result{result=types.ProductDetail}
 // @Failure 400 {object} app.Result
-// @Router /detail/:id [get] [auth]
-func (s *ProductService) DetailProduct(c *gin.Context) {
-	query := &IDQuery{}
-	if query.validate(c, types.ValidateURI) != nil {
-		return
-	}
-
+// @Router /detail [get] [auth]
+func (s *ProductService) DetailProduct(c *gin.Context, query *IDQuery) {
 	product, err := s.productRepo.GetByID(query.ID)
 	if err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
@@ -199,11 +220,14 @@ func (s *ProductService) DetailProduct(c *gin.Context) {
 // @Router /update [post] [auth]
 func (s *ProductService) UpdateProduct(c *gin.Context, query *repo.UpdateProductQuery) {
 	p, err := s.productRepo.GetByID(query.ID)
+	store, _ := s.storeRepo.GetByID(p.StoreID)
+
 	updateTime, parseTimeError := time.Parse(time.RFC3339, query.ClosedAT)
+
 	if err != nil {
 		APIResult.Error(c, http.StatusNoContent, "Produk tidak ditemukan")
 		return
-	} else if p.UserID != mid.CurrentUser.ID {
+	} else if store.OwnerID != mid.CurrentUser.ID {
 		APIResult.Error(c, http.StatusBadRequest, "Unauthorized")
 		return
 	} else if p.Closed {
@@ -222,7 +246,7 @@ func (s *ProductService) UpdateProduct(c *gin.Context, query *repo.UpdateProduct
 		log.Fatalf("ParseTime] error parsing time %v", parseTimeError.Error())
 	}
 
-	APIResult.Success(c, product.ToAPI(mid.CurrentUser.ID))
+	APIResult.Success(c, product.ToAPI(&mid.CurrentUser.ID))
 }
 
 // DeleteProduct docs
@@ -231,24 +255,23 @@ func (s *ProductService) UpdateProduct(c *gin.Context, query *repo.UpdateProduct
 // @Summary Endpoint untuk menghapus product
 // @Accept json
 // @Produce json
-// @Param id path int true "ID"
+// @Param id body int true "ID"
 // @Success 200 {object} app.Result{result=models.Product}
 // @Failure 400 {object} app.Result
-// @Router /delete/:id [post] [auth]
-func (s *ProductService) DeleteProduct(c *gin.Context) {
-	query := IDQuery{}
-	if query.validate(c, types.ValidateURI) != nil {
-		return
-	}
+// @Router /delete [post] [auth]
+func (s *ProductService) DeleteProduct(c *gin.Context, query *IDQuery) {
+	product, e := s.productRepo.GetByID(query.ID)
+	store, _ := s.storeRepo.GetByID(product.StoreID)
 
-	product := models.Product{}
-	s.productRepo.ProductQs.IDEq(query.ID).One(&product)
-	if product.UserID != mid.CurrentUser.ID {
+	if store.OwnerID != mid.CurrentUser.ID {
 		APIResult.Error(c, http.StatusBadRequest, "Anda tidak dapat menghapus produk ini")
 		return
+	} else if e != nil {
+		APIResult.Error(c, http.StatusBadRequest, "Produk tidak ditemukan")
+		return
 	}
 
-	if err := s.productRepo.DeleteProduct(query.ID); err != nil {
+	if err := s.productRepo.DeleteProduct(product.ID, store.ID); err != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -268,10 +291,10 @@ func (s *ProductService) DeleteProduct(c *gin.Context) {
 // @Failure 400 {object} app.Result
 // @Router /bid [post] [auth]
 func (s *ProductService) BidProduct(c *gin.Context, query *BidProductQuery) {
-	product := models.Product{}
-	err1 := s.productRepo.ProductQs.IDEq(query.ProductID).One(&product)
+	product, err1 := s.productRepo.GetByID(query.ProductID)
+	store, _ := s.storeRepo.GetByID(product.StoreID)
 
-	if product.UserID == mid.CurrentUser.ID {
+	if store.OwnerID == mid.CurrentUser.ID {
 		APIResult.Error(c, http.StatusBadRequest, "Anda tidak dapat melakukan bid ini")
 		return
 	} else if product.Closed {
@@ -293,11 +316,13 @@ func (s *ProductService) BidProduct(c *gin.Context, query *BidProductQuery) {
 		APIResult.Error(c, http.StatusBadRequest, fmt.Sprintf("Error: %s", err.Error()))
 	}
 
-	s.event.Emmit(event.UserBidProductEvent{
-		User:    mid.CurrentUser,
-		Product: product,
-		BidData: bidder.(models.ProductBidder),
-	})
+	{
+		go s.event.Emmit(&event.UserBidProductEvent{
+			User:    &mid.CurrentUser,
+			Product: product,
+			BidData: bidder.(models.ProductBidder),
+		})
+	}
 
 	APIResult.Success(c, bidder)
 }
@@ -315,12 +340,13 @@ func (s *ProductService) BidProduct(c *gin.Context, query *BidProductQuery) {
 // @Router /reopen [post] [auth]
 func (s *ProductService) ReOpenProductBid(c *gin.Context, query *ReOpenBidQuery) {
 	p, err := s.productRepo.GetByID(query.ProductID)
+	store, _ := s.storeRepo.GetByID(p.StoreID)
 	updatedTime, parseTimeError := time.Parse(time.RFC3339, query.ClosedAT)
 
 	if err != nil {
-		APIResult.Error(c, http.StatusNoContent, "Produk tidak ditemukan")
+		APIResult.Error(c, http.StatusBadRequest, "Produk tidak ditemukan")
 		return
-	} else if p.UserID != mid.CurrentUser.ID {
+	} else if store.OwnerID != mid.CurrentUser.ID {
 		APIResult.Error(c, http.StatusUnauthorized, "Unauthorized")
 		return
 	} else if !p.Closed {
@@ -331,8 +357,8 @@ func (s *ProductService) ReOpenProductBid(c *gin.Context, query *ReOpenBidQuery)
 		return
 	}
 
-	product, err := s.productRepo.ReOpenBid(query.ProductID, query.ClosedAT)
-	if err != nil {
+	product, err2 := s.productRepo.ReOpenBid(query.ProductID, query.ClosedAT)
+	if err2 != nil {
 		APIResult.Error(c, http.StatusBadRequest, err.Error())
 		return
 	} else if parseTimeError != nil {
@@ -348,21 +374,18 @@ func (s *ProductService) ReOpenProductBid(c *gin.Context, query *ReOpenBidQuery)
 // @Security bearerAuth
 // @Accept json
 // @Produce json
-// @Param id path int true "ID"
+// @Param id body int true "ID"
 // @Success 200 {object} app.Result{result=models.Product}
 // @Failure 400 {object} app.Result
-// @Router /mark-as-sold/:id [post] [auth]
-func (s *ProductService) MarkProductAsSold(c *gin.Context) {
-	query := IDQuery{}
-	if query.validate(c, types.ValidateURI) != nil {
-		return
-	}
-
+// @Router /mark-as-sold [post] [auth]
+func (s *ProductService) MarkProductAsSold(c *gin.Context, query *IDQuery) {
 	p, err := s.productRepo.GetByID(query.ID)
+	store, _ := s.storeRepo.GetByID(p.StoreID)
+
 	if err != nil {
 		APIResult.Error(c, http.StatusNoContent, "Produk tidak ditemukan")
 		return
-	} else if p.UserID != mid.CurrentUser.ID {
+	} else if store.OwnerID != mid.CurrentUser.ID {
 		APIResult.Error(c, http.StatusUnauthorized, "Unauthorized")
 		return
 	} else if !p.Closed {

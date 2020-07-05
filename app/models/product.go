@@ -13,7 +13,7 @@ import (
 // gen:qs
 type Product struct {
 	ID            int64          `json:"id"`
-	UserID        int64          `json:"user_id"`
+	StoreID       int64          `json:"store_id"`
 	ProductImages []ProductImage `json:"product_images" gorm:"foreignkey:ProductID"`
 	ProductName   string         `json:"product_name"`
 	Desc          string         `json:"desc"`
@@ -71,10 +71,10 @@ func (BidStatus) TableName() string {
 }
 
 // GetBidderStatus digunakan untuk mendapatkan status bid product
-func (p *Product) GetBidderStatus(userID int64) BidStatus {
+func (p *Product) GetBidderStatus(userID *int64) BidStatus {
 	bidStatus := BidStatus{}
-	bidPrice := app.DB.Select("bid_price").Where("user_id = ?", userID).Order("id DESC").Limit(1)
-	latestUserID := app.DB.Select("user_id").Where("product_id = ?", p.ID).Order("id DESC").Limit(1)
+	bidPrice := app.DB.Model(&ProductBidder{}).Select("bid_price").Where("user_id = ?", userID).Order("id DESC").Limit(1)
+	latestUserID := app.DB.Model(&ProductBidder{}).Select("user_id").Where("product_id = ?", p.ID).Order("id DESC").Limit(1)
 	app.DB.Select(
 		"MAX(bid_price) AS latest_bid_price, COUNT(id) AS bid_count, ? AS latest_user_id, ? AS my_latest_bid",
 		latestUserID.SubQuery(),
@@ -93,7 +93,7 @@ func (p *Product) GetLatestBidPrice() float64 {
 }
 
 // ToAPI --
-func (p *Product) ToAPI(userID int64) types.Product {
+func (p *Product) ToAPI(userID *int64) types.Product {
 
 	images := []ProductImage{}
 	labels := []ProductLabel{}
@@ -148,7 +148,6 @@ func (p *Product) ToDetailAPI() types.ProductDetail {
 		Labels:        labels,
 		Sold:          p.Sold,
 		Closed:        p.Closed,
-		Bidders:       bidders,
 	}
 
 	return res

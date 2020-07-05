@@ -20,9 +20,6 @@ prepare:
 	go get -u github.com/swaggo/swag/cmd/swag
 	go get -u github.com/rubenv/sql-migrate/...
 
-migrate-init:
-	cat dbconfig.yml.example > dbconfig.yml
-
 migrate-new:
 	sql-migrate new -env="development" $(name)
 
@@ -80,18 +77,16 @@ lint:
 test:
 	go test -v ./tests -p=1
 
-run-dev: 
-	go run ${APP}.go
-
 run:
-	GIN_MODE=release go run ${APP}.go
+	go run ${APP}.go
 
 api-docs:
 	swag init -g goauction.go
 
 copy-config:
 	cp .env.example .env
+	cat dbconfig.yml.example > dbconfig.yml
 
 clean:
-	rm -rf ./out/ ./docs
+	rm -rf ./out
 

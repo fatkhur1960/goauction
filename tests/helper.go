@@ -27,7 +27,7 @@ import (
 
 var (
 	ts     = httptest.NewServer(getTestingRoutes())
-	client = &http.Client{}
+	client = http.Client{}
 )
 
 func getTestingRoutes() *gin.Engine {
@@ -80,10 +80,10 @@ func reqPOST(path string, args ...interface{}) app.Result {
 		log.Println("]", reqErr.Error())
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	if token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
 	resp, err := client.Do(req)
-
-	log.Println("]", resp)
 
 	return parseResult(resp, err)
 }
@@ -107,11 +107,11 @@ func reqGET(args ...interface{}) app.Result {
 	return parseResult(resp, err)
 }
 
-func generateUserThenActivate() (string, string) {
+func generateUserThenActivate() (int64, string, string) {
 	u := service.RegisterUserQuery{
 		FullName: faker.Name().Name(),
 		Email:    faker.Internet().Email(),
-		PhoneNum: "6288112212221",
+		PhoneNum: faker.PhoneNumber().CellPhone(),
 	}
 
 	passhash := faker.Internet().Password(8, 12)
@@ -123,13 +123,15 @@ func generateUserThenActivate() (string, string) {
 		Token:    fmt.Sprintf("%v", rMap["token"]),
 		Passhash: passhash,
 	}
-	reqPOST(endpoint.ActivateUser, activate)
+	rv2 := reqPOST(endpoint.ActivateUser, activate)
+	resMap := rv2.Result.(map[string]interface{})
+	userID := resMap["user_id"].(float64)
 
-	return u.Email, passhash
+	return int64(userID), u.Email, passhash
 }
 
 func authorizeUser() string {
-	email, passhash := generateUserThenActivate()
+	_, email, passhash := generateUserThenActivate()
 	payload := service.AuthQuery{
 		Email:    email,
 		Passhash: passhash,
@@ -140,39 +142,66 @@ func authorizeUser() string {
 	return rMap["token"].(string)
 }
 
-func createProduct(token string) (interface{}, error) {
+func upgradeUser(token string) *models.Store {
+	payload := service.BecomeAuctioneerQuery{
+		Name:        faker.Company().Name(),
+		Info:        faker.Company().CatchPhrase(),
+		Province:    faker.Address().State(),
+		Regency:     faker.Address().City(),
+		SUBDistrict: faker.Address().StreetName(),
+		Village:     faker.Address().StreetSuffix(),
+		Address:     faker.Address().StreetAddress(),
+	}
+	rv := reqPOST(endpoint.BecomeAuctioneer, payload, token)
+	rMap := rv.Result.(map[string]interface{})
+	store := mapToJSON(rMap, &models.Store{}).(*models.Store)
+
+	return store
+}
+
+func closeProduct(productID int64) {
+	repo := repository.NewProductRepository()
+	repo.CloseProduct(productID)
+}
+
+func createProduct(token string, storeID int64) (types.Product, error) {
+	labels := []repository.LabelQuery{}
+	labels = append(labels, repository.LabelQuery{
+		Name:  "label_name",
+		Value: "value",
+	})
 	payload := repository.NewProductQuery{
+		StoreID:       storeID,
 		ProductName:   faker.Commerce().ProductName(),
 		ProductImages: []string{faker.Internet().Url()},
 		Desc:          faker.RandomString(100),
 		Condition:     1,
 		ConditionAvg:  100,
-		StartPrice:    float64(faker.Commerce().Price()),
-		BidMultpl:     float64(faker.Commerce().Price()),
+		StartPrice:    50000,
+		BidMultpl:     50000,
 		ClosedAT:      utils.NOW.Add(time.Hour * 24).Format(time.RFC3339),
-		Labels:        []repository.LabelQuery{},
+		Labels:        labels,
 	}
 
 	rv := reqPOST(endpoint.AddProduct, payload, token)
 	if rv.Code != 0 {
-		return nil, errors.New("Failed creating product")
+		return types.Product{}, errors.New("Failed creating product")
 	}
 	product := types.Product{}
 	resMap := rv.Result.(map[string]interface{})
-	mapstructure.Decode(resMap, &product)
-
+	mapToJSON(resMap, &product)
 	return product, nil
 }
 
-func cleanUsers() {
-	userRepo := repository.UserRepository{
-		UserQs: models.NewUserQuerySet(app.DB),
+// convert map to json with param input is map interface,
+// and output param is referenced interface
+func mapToJSON(input map[string]interface{}, output interface{}) interface{} {
+	config := &mapstructure.DecoderConfig{
+		TagName: "json",
 	}
+	config.Result = output
+	decoder, _ := mapstructure.NewDecoder(config)
+	decoder.Decode(input)
 
-	productRepo := repository.ProductRepository{
-		ProductQs: models.NewProductQuerySet(app.DB),
-	}
-
-	userRepo.CleanUpUser()
-	productRepo.CleanUpProduct()
+	return output
 }

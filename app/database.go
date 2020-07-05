@@ -32,6 +32,11 @@ func ConnectDatabase() {
 	DB = database
 }
 
+// CloseDatabase closing database connection
+func CloseDatabase() {
+	DB.Close()
+}
+
 // ConnectDatabaseTest method for testing
 func ConnectDatabaseTest() {
 	dbConf := fmt.Sprintf(

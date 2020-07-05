@@ -28,6 +28,15 @@ type (
 		Filter string `form:"filter"`
 	}
 
+	// QueryMessages request type struct
+	QueryMessages struct {
+		ChatID int64  `form:"chat_id" binding:"required"`
+		Limit  int    `form:"limit" binding:"required"`
+		Offset int    `form:"offset"`
+		Query  string `form:"query"`
+		Filter string `form:"filter"`
+	}
+
 	// IDQuery request type struct
 	IDQuery struct {
 		ID int64 `uri:"id" binding:"required"`

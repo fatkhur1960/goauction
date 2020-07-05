@@ -57,7 +57,7 @@ func Handler() *socketio.Server {
 		return nil
 	})
 	server.OnEvent("/chat", "join", func(s socketio.Conn, join join) {
-		log.Printf("WS] %s joined on %s\n", join.FullName, join.RoomName)
+		log.Printf("WS] %s joined on chat id %s\n", join.FullName, join.RoomName)
 		s.Join(join.RoomName)
 	})
 	server.OnEvent("/chat", "send", func(s socketio.Conn, msg message) {

@@ -19,14 +19,39 @@ definitions:
       valid_thru:
         type: string
     type: object
-  models.BidStatus:
+  models.Chat:
     properties:
-      bid_count:
+      id:
         type: integer
-      latest_bid_price:
-        type: number
-      latest_user_id:
+      initiator_id:
         type: integer
+      last_updated:
+        type: string
+      subscriber_id:
+        type: integer
+      ts:
+        type: string
+    type: object
+  models.Message:
+    properties:
+      attachment_data:
+        type: string
+      attachment_kind:
+        type: integer
+      chat_id:
+        type: integer
+      deleted:
+        type: boolean
+      id:
+        type: integer
+      receiver_id:
+        type: integer
+      sender_id:
+        type: integer
+      text:
+        type: string
+      ts:
+        type: string
     type: object
   models.Product:
     properties:
@@ -60,7 +85,7 @@ definitions:
         type: boolean
       start_price:
         type: number
-      user_id:
+      store_id:
         type: integer
     type: object
   models.ProductBidder:
@@ -73,9 +98,6 @@ definitions:
         type: integer
       product_id:
         type: integer
-      user:
-        $ref: '#/definitions/models.User'
-        type: object
       user_id:
         type: integer
       winner:
@@ -83,12 +105,16 @@ definitions:
     type: object
   models.ProductImage:
     properties:
+      id:
+        type: integer
       image_url:
         type: string
     type: object
   models.ProductLabel:
     properties:
       name:
+        type: string
+      value:
         type: string
     type: object
   models.RegisterUser:
@@ -104,6 +130,35 @@ definitions:
       registered_at:
         type: string
       token:
+        type: string
+    type: object
+  models.Store:
+    properties:
+      address:
+        type: string
+      announcement:
+        type: string
+      id:
+        type: integer
+      info:
+        type: string
+      last_updated:
+        type: string
+      name:
+        type: string
+      owner_id:
+        type: integer
+      product_count:
+        type: integer
+      province:
+        type: string
+      regency:
+        type: string
+      sub_district:
+        type: string
+      ts:
+        type: string
+      village:
         type: string
     type: object
   models.User:
@@ -155,12 +210,26 @@ definitions:
       entries:
         type: object
     type: object
-  service.Product:
+  types.Chat:
+    properties:
+      display:
+        type: object
+      id:
+        type: integer
+      initiator_id:
+        type: integer
+      last_updated:
+        type: string
+      subscriber_id:
+        type: integer
+      ts:
+        type: string
+    type: object
+  types.Product:
     properties:
       bid_multpl:
         type: number
       bid_status:
-        $ref: '#/definitions/models.BidStatus'
         type: object
       closed:
         type: boolean
@@ -177,13 +246,9 @@ definitions:
       id:
         type: integer
       labels:
-        items:
-          $ref: '#/definitions/models.ProductLabel'
-        type: array
+        type: object
       product_images:
-        items:
-          $ref: '#/definitions/models.ProductImage'
-        type: array
+        type: object
       product_name:
         type: string
       sold:
@@ -357,6 +422,24 @@ paths:
       summary: Endpoint untuk melakukan otorisasi
       tags:
       - AuthService
+  /become-auctioneer:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: json
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mengupgrade user jadi pelelang
+      tags:
+      - UserService
   /bid:
     post:
       consumes:
@@ -395,16 +478,111 @@ paths:
       summary: Endpoint untuk mengupdate product
       tags:
       - ProductService
-  /delete/:id:
+  /bids:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/types.Product'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mendapatkan bid history
+      tags:
+      - UserService
+  /connect-create:
+    post:
+      parameters:
+      - description: AppID
+        in: body
+        name: app_id
+        required: true
+        schema:
+          type: string
+      - description: ProviderName
+        in: body
+        name: provider_name
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.Result'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk membuat app id digunakan untuk kebutuhan push notif
+      tags:
+      - UserService
+  /connect-remove:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.Result'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menghapus app id dari db
+      tags:
+      - UserService
+  /delete:
     post:
       consumes:
       - application/json
       parameters:
       - description: ID
-        in: path
+        in: body
         name: id
         required: true
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -426,13 +604,13 @@ paths:
       summary: Endpoint untuk menghapus product
       tags:
       - ProductService
-  /detail/:id:
+  /detail:
     get:
       consumes:
       - application/json
       parameters:
       - description: ID
-        in: path
+        in: query
         name: id
         required: true
         type: integer
@@ -502,7 +680,7 @@ paths:
                   - properties:
                       entries:
                         items:
-                          $ref: '#/definitions/service.Product'
+                          $ref: '#/definitions/types.Product'
                         type: array
                     type: object
               type: object
@@ -515,16 +693,68 @@ paths:
       summary: Endpoint untuk menampilkan list product
       tags:
       - ProductService
-  /mark-as-sold/:id:
+  /list-messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/models.Message'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menampilkan list chat room
+      tags:
+      - ProductService
+  /mark-as-sold:
     post:
       consumes:
       - application/json
       parameters:
       - description: ID
-        in: path
+        in: body
         name: id
         required: true
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -662,7 +892,7 @@ paths:
                   - properties:
                       entries:
                         items:
-                          $ref: '#/definitions/service.Product'
+                          $ref: '#/definitions/types.Product'
                         type: array
                     type: object
               type: object
@@ -675,6 +905,59 @@ paths:
       summary: Endpoint untuk mendapatkan list product untuk current user
       tags:
       - ProductService
+  /me/store:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Store'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mendapatkan user store
+      tags:
+      - UserService
+  /new-room:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: UserID
+        in: body
+        name: user_id
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Chat'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      summary: Endpoint untuk membuat chat room
+      tags:
+      - ChatService
   /notifs:
     get:
       parameters:
@@ -831,6 +1114,62 @@ paths:
       summary: Endpoint digunakan untuk membuka bid kembali
       tags:
       - ProductService
+  /send-message:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ChatID
+        in: body
+        name: chat_id
+        required: true
+        schema:
+          type: integer
+      - description: ReceiverID
+        in: body
+        name: receiver_id
+        required: true
+        schema:
+          type: integer
+      - description: Text
+        in: body
+        name: text
+        required: true
+        schema:
+          type: string
+      - description: AttachmentKind
+        in: body
+        name: attachment_kind
+        required: true
+        schema:
+          type: integer
+      - description: AttachmentData
+        in: body
+        name: attachment_data
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  $ref: '#/definitions/models.Message'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk menambahkan product
+      tags:
+      - ChatService
   /unauthorize:
     post:
       consumes:

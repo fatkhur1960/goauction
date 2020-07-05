@@ -15,10 +15,11 @@ import (
 type (
 	// ProductRepository init repo
 	ProductRepository struct {
-		ProductQs models.ProductQuerySet
-		ImageQs   models.ProductImageQuerySet
-		LabelQs   models.ProductLabelQuerySet
-		BidderQs  models.ProductBidderQuerySet
+		productQs models.ProductQuerySet
+		storeQs   models.StoreQuerySet
+		imageQs   models.ProductImageQuerySet
+		labelQs   models.ProductLabelQuerySet
+		bidderQs  models.ProductBidderQuerySet
 	}
 
 	// LabelQuery definisi query untuk product label
@@ -29,6 +30,7 @@ type (
 
 	// NewProductQuery definisi query untuk menambahkan product
 	NewProductQuery struct {
+		StoreID       int64        `json:"store_id" binding:"required"`
 		ProductName   string       `json:"product_name" binding:"required"`
 		ProductImages []string     `json:"product_images"  binding:"required"`
 		Desc          string       `json:"desc"  binding:"required"`
@@ -68,22 +70,23 @@ type (
 // NewProductRepository create instance for product repository
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{
-		ProductQs: models.NewProductQuerySet(app.DB),
-		ImageQs:   models.NewProductImageQuerySet(app.DB),
-		LabelQs:   models.NewProductLabelQuerySet(app.DB),
-		BidderQs:  models.NewProductBidderQuerySet(app.DB),
+		productQs: models.NewProductQuerySet(app.DB),
+		storeQs:   models.NewStoreQuerySet(app.DB),
+		imageQs:   models.NewProductImageQuerySet(app.DB),
+		labelQs:   models.NewProductLabelQuerySet(app.DB),
+		bidderQs:  models.NewProductBidderQuerySet(app.DB),
 	}
 }
 
 // CreateProduct method untuk menambahkan product
-func (s *ProductRepository) CreateProduct(userID int64, query NewProductQuery) (interface{}, error) {
+func (s *ProductRepository) CreateProduct(query NewProductQuery) (models.Product, error) {
 	closedTime, timeErr := time.Parse(time.RFC3339, query.ClosedAT)
 	if timeErr != nil {
-		return nil, errors.New("Invalid datetime format. Correct format is like " + time.RFC3339)
+		return models.Product{}, errors.New("Invalid datetime format. Correct format is like " + time.RFC3339)
 	}
 
 	product := models.Product{}
-	product.UserID = userID
+	product.StoreID = query.StoreID
 	product.ProductName = query.ProductName
 	product.Desc = query.Desc
 	product.Condition = query.Condition
@@ -94,7 +97,7 @@ func (s *ProductRepository) CreateProduct(userID int64, query NewProductQuery) (
 	product.CreatedAT = &utils.NOW
 
 	if err := product.Create(app.DB); err != nil {
-		return nil, errors.New("Tidak dapat menambahkan produk")
+		return models.Product{}, errors.New("Tidak dapat menambahkan produk")
 	}
 
 	for _, url := range query.ProductImages {
@@ -114,28 +117,33 @@ func (s *ProductRepository) CreateProduct(userID int64, query NewProductQuery) (
 		label.Create(app.DB)
 	}
 
+	s.storeQs.IDEq(query.StoreID).GetUpdater().SetProductCount(+1).Update()
+
 	return product, nil
 }
 
 // GetProductList method untuk mendapatkan semua product
 func (s *ProductRepository) GetProductList(args ProductFilter) ([]models.Product, int, error) {
 	products := []models.Product{}
-	conn := s.ProductQs.GetDB()
-	count, _ := s.ProductQs.Count()
+	conn := s.productQs.GetDB()
+	count, _ := s.productQs.Count()
 
-	conn.Where("sold = ? AND closed = ?", args.Sold, args.Closed)
+	conn = conn.Where("sold = ? AND closed = ?", args.Sold, args.Closed)
 	// Search product by name
-	if args.Query != nil {
+	if args.Query != "" {
 		keyword := fmt.Sprint("%", strings.ToLower(args.Query.(string)), "%")
 		conn = conn.Where("LOWER(product_name) LIKE ? ", keyword)
 		conn = conn.Or("LOWER(\"desc\") LIKE ? ", keyword)
 
-		conn.Count(&count)
+		conn = conn.Count(&count)
 	}
 
-	conn.Order("created_at DESC")
-	conn.Offset(args.Offset).Limit(args.Limit)
-	conn.Find(&products)
+	// Search product by user id
+	if args.UserID != 0 {
+		conn = conn.Where("user_id = ?", args.UserID)
+	}
+
+	conn.Order("created_at DESC").Limit(args.Limit).Offset(args.Offset).Find(&products)
 
 	return products, count, nil
 }
@@ -144,9 +152,9 @@ func (s *ProductRepository) GetProductList(args ProductFilter) ([]models.Product
 func (s *ProductRepository) GetBidProductList(userID int64, offset int, limit int) ([]models.Product, int, error) {
 	products := []models.Product{}
 	count := 0
-	bid := s.BidderQs.GetDB().Select("product_id").Where("user_id = ?", userID).Group("product_id")
+	bid := s.bidderQs.GetDB().Select("product_id").Where("user_id = ?", userID).Group("product_id")
 	bid.Count(&count)
-	err := s.ProductQs.GetDB().Where("id IN ?", bid.SubQuery()).Offset(offset).Limit(limit).Order("id DESC").Find(&products)
+	err := s.productQs.GetDB().Where("id IN ?", bid.SubQuery()).Offset(offset).Limit(limit).Order("id DESC").Find(&products)
 	if err != nil {
 		return products, count, err.Error
 	}
@@ -157,8 +165,8 @@ func (s *ProductRepository) GetBidProductList(userID int64, offset int, limit in
 // GetMyProductList method untuk mendapatkan semua product
 func (s *ProductRepository) GetMyProductList(args ProductFilter) ([]models.Product, int, error) {
 	products := []models.Product{}
-	conn := s.ProductQs.GetDB()
-	count, _ := s.ProductQs.Count()
+	conn := s.productQs.GetDB()
+	count, _ := s.productQs.Count()
 
 	conn.Where("user_id = ? AND sold = ? AND closed = ?", args.UserID, args.Sold, args.Closed)
 	// Search product by name
@@ -170,9 +178,7 @@ func (s *ProductRepository) GetMyProductList(args ProductFilter) ([]models.Produ
 		conn.Count(&count)
 	}
 
-	conn.Order("created_at DESC")
-	conn.Offset(args.Offset).Limit(args.Limit)
-	conn.Find(&products)
+	conn.Order("created_at DESC").Limit(args.Limit).Offset(args.Offset).Find(&products)
 
 	return products, count, nil
 }
@@ -180,7 +186,7 @@ func (s *ProductRepository) GetMyProductList(args ProductFilter) ([]models.Produ
 // GetByID method untuk mendapatkan product berdasarkan id-nya
 func (s *ProductRepository) GetByID(productID int64) (models.Product, error) {
 	product := models.Product{}
-	err := s.ProductQs.IDEq(productID).One(&product)
+	err := s.productQs.IDEq(productID).One(&product)
 	if err != nil {
 		return product, err
 	}
@@ -191,19 +197,21 @@ func (s *ProductRepository) GetByID(productID int64) (models.Product, error) {
 // UpdateProduct method untuk mengupdate product
 func (s *ProductRepository) UpdateProduct(productID int64, query UpdateProductQuery) (models.Product, error) {
 	product := models.Product{}
-	dao := s.ProductQs.IDEq(productID)
+	dao := s.productQs.IDEq(productID)
 	updater := dao.GetUpdater()
 
 	closedTime, _ := time.Parse(time.RFC3339, query.ClosedAT)
 
 	updater.SetProductName(query.ProductName)
 	updater.SetDesc(query.Desc)
+	updater.SetStartPrice(query.StartPrice)
+	updater.SetBidMultpl(query.BidMultpl)
 	updater.SetCondition(query.Condition)
 	updater.SetConditionAvg(query.ConditionAvg)
 	updater.SetClosedAT(&closedTime)
 	updater.Update()
 
-	s.ImageQs.ProductIDEq(productID).Delete()
+	s.imageQs.ProductIDEq(productID).Delete()
 	for _, url := range query.ProductImages {
 		image := models.ProductImage{
 			ProductID: productID,
@@ -212,7 +220,7 @@ func (s *ProductRepository) UpdateProduct(productID int64, query UpdateProductQu
 		image.Create(app.DB)
 	}
 
-	s.LabelQs.ProductIDEq(productID).Delete()
+	s.labelQs.ProductIDEq(productID).Delete()
 	for _, label := range query.Labels {
 		label := models.ProductLabel{
 			ProductID: productID,
@@ -243,10 +251,11 @@ func (s *ProductRepository) AddProductBidder(userID int64, productID int64, bidP
 }
 
 // DeleteProduct digunakan untuk menghapus product
-func (s *ProductRepository) DeleteProduct(productID int64) error {
-	s.LabelQs.ProductIDEq(productID).Delete()
-	s.ImageQs.ProductIDEq(productID).Delete()
-	return s.ProductQs.IDEq(productID).Delete()
+func (s *ProductRepository) DeleteProduct(productID int64, storeID int64) error {
+	s.labelQs.ProductIDEq(productID).Delete()
+	s.imageQs.ProductIDEq(productID).Delete()
+	s.storeQs.IDEq(storeID).GetUpdater().SetProductCount(-1).Update()
+	return s.productQs.IDEq(productID).Delete()
 }
 
 // ReOpenBid digunakan untuk membuka bid kembali
@@ -256,7 +265,7 @@ func (s *ProductRepository) ReOpenBid(productID int64, closedAt string) (models.
 	if timeErr != nil {
 		return product, errors.New("Invalid datetime format. Correct format is like " + time.RFC3339)
 	}
-	dao := s.ProductQs.IDEq(productID)
+	dao := s.productQs.IDEq(productID)
 	err := dao.GetUpdater().SetClosedAT(&closeTime).SetClosed(false).Update()
 	if err != nil {
 		return product, err
@@ -267,10 +276,20 @@ func (s *ProductRepository) ReOpenBid(productID int64, closedAt string) (models.
 	return product, nil
 }
 
+// CloseProduct digunakan untuk menutup lelang produk
+func (s *ProductRepository) CloseProduct(productID int64) error {
+	err := s.productQs.IDEq(productID).GetUpdater().SetClosed(true).Update()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SetProductSold digunakan untuk menandai produk sudah terjual
 func (s *ProductRepository) SetProductSold(productID int64) (models.Product, error) {
 	product := models.Product{}
-	dao := s.ProductQs.IDEq(productID)
+	dao := s.productQs.IDEq(productID)
 	err := dao.GetUpdater().SetSold(true).Update()
 	if err != nil {
 		return product, err
@@ -285,7 +304,7 @@ func (s *ProductRepository) SetProductSold(productID int64) (models.Product, err
 // NOTE: using this for testing only
 func (s *ProductRepository) CleanUpProduct() {
 	products := []models.Product{}
-	s.ProductQs.All(&products)
+	s.productQs.All(&products)
 	for _, p := range products {
 		if err := p.Delete(app.DB); err != nil {
 			log.Fatal(err.Error())
