@@ -31,4 +31,6 @@ require (
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	syreclabs.com/go/faker v1.2.2
+	github.com/swaggo/swag/cmd/swag
+	github.com/rubenv/sql-migrate/...
 )
