@@ -19,7 +19,7 @@ type (
 	// Result untuk json response
 	Result struct {
 		Code        int         `json:"code"`
-		Description string      `json:"description,omitempty"`
+		Description interface{} `json:"description,omitempty"`
 		Result      interface{} `json:"result"`
 	}
 )
@@ -28,7 +28,7 @@ type (
 func NewAPIResult() APIResult {
 	return &Result{
 		Code:        0,
-		Description: "",
+		Description: nil,
 		Result:      nil,
 	}
 }
