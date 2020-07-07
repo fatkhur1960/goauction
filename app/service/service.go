@@ -37,9 +37,18 @@ type (
 		Filter string `form:"filter"`
 	}
 
+	// QueryProducts request type struct
+	QueryProducts struct {
+		ProductID int64  `form:"product_id" binding:"required"`
+		Limit     int    `form:"limit" binding:"required"`
+		Offset    int    `form:"offset"`
+		Query     string `form:"query"`
+		Filter    string `form:"filter"`
+	}
+
 	// IDQuery request type struct
 	IDQuery struct {
-		ID int64 `uri:"id" binding:"required"`
+		ID int64 `form:"id" binding:"required"`
 	}
 )
 

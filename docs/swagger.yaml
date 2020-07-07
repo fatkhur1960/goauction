@@ -4,7 +4,7 @@ definitions:
       code:
         type: integer
       description:
-        type: string
+        type: object
       result:
         type: object
     type: object
@@ -98,6 +98,9 @@ definitions:
         type: integer
       product_id:
         type: integer
+      user:
+        $ref: '#/definitions/models.UserSimple'
+        type: object
       user_id:
         type: integer
       winner:
@@ -146,6 +149,9 @@ definitions:
         type: string
       name:
         type: string
+      owner:
+        $ref: '#/definitions/models.UserSimple'
+        type: object
       owner_id:
         type: integer
       product_count:
@@ -203,6 +209,17 @@ definitions:
       user_id:
         type: integer
     type: object
+  models.UserSimple:
+    properties:
+      address:
+        type: string
+      avatar:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+    type: object
   service.EntriesResult:
     properties:
       count:
@@ -256,6 +273,39 @@ definitions:
       start_price:
         type: number
     type: object
+  types.ProductDetail:
+    properties:
+      bid_multpl:
+        type: number
+      bid_status:
+        type: object
+      closed:
+        type: boolean
+      closed_at:
+        type: string
+      condition:
+        type: integer
+      condition_avg:
+        type: number
+      created_at:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      labels:
+        type: object
+      product_images:
+        type: object
+      product_name:
+        type: string
+      sold:
+        type: boolean
+      start_price:
+        type: number
+      store:
+        type: object
+    type: object
 info:
   contact: {}
   description: Backend lelah online
@@ -293,7 +343,7 @@ paths:
             - $ref: '#/definitions/app.Result'
             - properties:
                 result:
-                  $ref: '#/definitions/models.User'
+                  $ref: '#/definitions/models.AccessToken'
               type: object
         "400":
           description: Bad Request
@@ -440,7 +490,7 @@ paths:
       summary: Endpoint untuk mengupgrade user jadi pelelang
       tags:
       - UserService
-  /bid:
+  /bidder/add:
     post:
       consumes:
       - application/json
@@ -476,6 +526,60 @@ paths:
       security:
       - bearerAuth: []
       summary: Endpoint untuk mengupdate product
+      tags:
+      - ProductService
+  /bidder/list:
+    get:
+      parameters:
+      - description: ProductID
+        in: query
+        name: product_id
+        required: true
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: Query
+        in: query
+        name: query
+        type: string
+      - description: Filter
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.Result'
+            - properties:
+                result:
+                  allOf:
+                  - $ref: '#/definitions/service.EntriesResult'
+                  - properties:
+                      entries:
+                        items:
+                          $ref: '#/definitions/models.ProductBidder'
+                        type: array
+                    type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.Result'
+      security:
+      - bearerAuth: []
+      summary: Endpoint untuk mendapatkan list product bidder
       tags:
       - ProductService
   /bids:
@@ -624,14 +728,7 @@ paths:
             - $ref: '#/definitions/app.Result'
             - properties:
                 result:
-                  allOf:
-                  - $ref: '#/definitions/service.EntriesResult'
-                  - properties:
-                      entries:
-                        items:
-                          $ref: '#/definitions/models.Product'
-                        type: array
-                    type: object
+                  $ref: '#/definitions/types.ProductDetail'
               type: object
         "400":
           description: Bad Request

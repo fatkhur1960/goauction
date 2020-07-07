@@ -38,7 +38,8 @@ type (
 		Labels        interface{} `json:"labels"`
 		Sold          bool        `json:"sold"`
 		Closed        bool        `json:"closed"`
-		UserSimple    interface{} `json:"user_simple"`
+		Store         interface{} `json:"store"`
+		BidStatus     interface{} `json:"bid_status"`
 	}
 
 	// Chat api type

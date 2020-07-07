@@ -15,13 +15,13 @@ type User struct {
 	ID           int64      `json:"id"`
 	FullName     string     `json:"full_name"`
 	Email        string     `json:"email"`
-	PhoneNum     string     `json:"phone_num"`
+	PhoneNum     string     `json:"phone_num,omitempty"`
 	Address      string     `json:"address"`
 	Avatar       string     `json:"avatar"`
-	Type         int        `json:"type"`
-	Active       bool       `json:"active"`
-	LastLogin    *time.Time `json:"last_login"`
-	RegisteredAt time.Time  `json:"registered_at"`
+	Type         int        `json:"type,omitempty"`
+	Active       bool       `json:"active,omitempty"`
+	LastLogin    *time.Time `json:"last_login,omitempty"`
+	RegisteredAt time.Time  `json:"registered_at,omitempty"`
 }
 
 // UserSimple ...
@@ -69,19 +69,20 @@ type AccessToken struct {
 // Store definisi model untuk store
 // gen:qs
 type Store struct {
-	ID           int64      `json:"id"`
-	Name         string     `json:"name"`
-	Info         string     `json:"info"`
-	OwnerID      int64      `json:"owner_id"`
-	Announcement string     `json:"announcement"`
-	ProductCount int        `json:"product_count"`
-	Province     string     `json:"province"`
-	Regency      string     `json:"regency"`
-	SUBDistrict  string     `json:"sub_district"`
-	Village      string     `json:"village"`
-	Address      string     `json:"address"`
-	LastUpdated  *time.Time `json:"last_updated"`
-	TS           *time.Time `json:"ts"`
+	ID           int64       `json:"id"`
+	Name         string      `json:"name"`
+	Info         string      `json:"info"`
+	Owner        *UserSimple `json:"owner"`
+	OwnerID      int64       `json:"owner_id"`
+	Announcement string      `json:"announcement"`
+	ProductCount int         `json:"product_count"`
+	Province     string      `json:"province"`
+	Regency      string      `json:"regency"`
+	SUBDistrict  string      `json:"sub_district"`
+	Village      string      `json:"village"`
+	Address      string      `json:"address"`
+	LastUpdated  *time.Time  `json:"last_updated"`
+	TS           *time.Time  `json:"ts"`
 }
 
 // UserConnect model

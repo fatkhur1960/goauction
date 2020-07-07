@@ -31,13 +31,13 @@ type Product struct {
 // ProductBidder models
 // gen:qs
 type ProductBidder struct {
-	ID        int64      `json:"id"`
-	UserID    int64      `json:"user_id"`
-	ProductID int64      `json:"product_id"`
-	BidPrice  float64    `json:"bid_price"`
-	Winner    bool       `json:"winner"`
-	CreatedAT *time.Time `json:"created_at"`
-	User      *User      `json:"-" gorm:"foreignkey:UserID"`
+	ID        int64       `json:"id"`
+	UserID    int64       `json:"user_id"`
+	ProductID int64       `json:"product_id"`
+	BidPrice  float64     `json:"bid_price"`
+	Winner    bool        `json:"winner"`
+	CreatedAT *time.Time  `json:"created_at"`
+	User      *UserSimple `json:"user,omitempty"`
 }
 
 // ProductImage model
@@ -122,20 +122,23 @@ func (p *Product) ToAPI(userID *int64) types.Product {
 }
 
 // ToDetailAPI product detail api type
-func (p *Product) ToDetailAPI() types.ProductDetail {
+func (p *Product) ToDetailAPI(userID *int64) types.ProductDetail {
 	images := []ProductImage{}
 	labels := []ProductLabel{}
-	app.DB.Model(&p).Select("image_url").Related(&images).Select("name").Related(&labels)
 
-	bidders := []ProductBidder{}
-	app.DB.Joins(
-		"JOIN users ON users.id = product_bidders.user_id",
-	).Select("users.id as bidder_id, users.full_name as bidder, users.avatar as bidder_pic_url, product_bidders.bid_price, product_bidders.winner").Order("product_bidders.bid_price DESC").Find(
-		&bidders, "product_id = ?", p.ID,
-	)
+	app.DB.Model(&p).Select("image_url").Related(&images).Select("name, value").Related(&labels)
+
+	store := Store{}
+	owner := UserSimple{}
+	app.DB.First(&store, "id = ?", p.StoreID)
+	app.DB.First(&owner, "id = ?", store.OwnerID)
+	store.Owner = &owner
+
+	bidStatus := p.GetBidderStatus(userID)
 
 	res := types.ProductDetail{
 		ID:            p.ID,
+		Store:         store,
 		ProductName:   p.ProductName,
 		ProductImages: images,
 		Desc:          p.Desc,
@@ -148,7 +151,18 @@ func (p *Product) ToDetailAPI() types.ProductDetail {
 		Labels:        labels,
 		Sold:          p.Sold,
 		Closed:        p.Closed,
+		BidStatus:     bidStatus,
 	}
 
 	return res
+}
+
+// ToAPI implementation for ProductBidder
+func (p *ProductBidder) ToAPI() *ProductBidder {
+	user := UserSimple{}
+	app.DB.First(&user, "id = ?", p.UserID)
+
+	p.User = &user
+
+	return p
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/fatkhur1960/goauction/app"
 	"github.com/fatkhur1960/goauction/app/models"
 	"github.com/fatkhur1960/goauction/app/utils"
+	"github.com/jinzhu/gorm"
 )
 
 type (
@@ -96,28 +97,36 @@ func (s *ProductRepository) CreateProduct(query NewProductQuery) (models.Product
 	product.ClosedAT = &closedTime
 	product.CreatedAT = &utils.NOW
 
-	if err := product.Create(app.DB); err != nil {
-		return models.Product{}, errors.New("Tidak dapat menambahkan produk")
-	}
-
-	for _, url := range query.ProductImages {
-		image := models.ProductImage{
-			ProductID: product.ID,
-			ImageURL:  url,
+	err := s.productQs.GetDB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&product).Error; err != nil {
+			return errors.New("Tidak dapat menambahkan produk")
 		}
-		image.Create(app.DB)
-	}
 
-	for _, label := range query.Labels {
-		label := models.ProductLabel{
-			ProductID: product.ID,
-			Name:      label.Name,
-			Value:     label.Value,
+		for _, url := range query.ProductImages {
+			image := models.ProductImage{
+				ProductID: product.ID,
+				ImageURL:  url,
+			}
+			tx.Create(&image)
 		}
-		label.Create(app.DB)
+
+		for _, label := range query.Labels {
+			label := models.ProductLabel{
+				ProductID: product.ID,
+				Name:      label.Name,
+				Value:     label.Value,
+			}
+			tx.Create(&label)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return models.Product{}, err
 	}
 
-	s.storeQs.IDEq(query.StoreID).GetUpdater().SetProductCount(+1).Update()
+	s.storeQs.IDEq(query.StoreID).GetUpdater().SetProductCount(1).Update()
 
 	return product, nil
 }
@@ -160,6 +169,22 @@ func (s *ProductRepository) GetBidProductList(userID int64, offset int, limit in
 	}
 
 	return products, count, nil
+}
+
+// GetBidderProduct method untuk mendapatkan bidder berdasarkan product id-nya
+func (s *ProductRepository) GetBidderProduct(productID int64, offset int, limit int) (*[]models.ProductBidder, int, error) {
+	bidders := []models.ProductBidder{}
+	err := s.bidderQs.ProductIDEq(productID).Offset(offset).Limit(limit).All(&bidders)
+	if err != nil {
+		return &bidders, 0, err
+	}
+
+	count, err := s.bidderQs.ProductIDEq(productID).Count()
+	if err != nil {
+		return &bidders, 0, err
+	}
+
+	return &bidders, count, nil
 }
 
 // GetMyProductList method untuk mendapatkan semua product

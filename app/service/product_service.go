@@ -99,7 +99,7 @@ func (s *ProductService) AddProduct(c *gin.Context, query *repo.NewProductQuery)
 // @Param filter query string false "Filter"
 // @Success 200 {object} app.Result{result=EntriesResult{entries=[]types.Product}}
 // @Failure 400 {object} app.Result
-// @Router /list [get]
+// @Router /list [get] [auth]
 func (s *ProductService) ListProduct(c *gin.Context, query *QueryEntries) {
 	userID := int64(0)
 	closed := false
@@ -188,7 +188,7 @@ func (s *ProductService) ListMyProduct(c *gin.Context, query *QueryEntries) {
 // @Param id query int true "ID"
 // @Success 200 {object} app.Result{result=types.ProductDetail}
 // @Failure 400 {object} app.Result
-// @Router /detail [get] [auth]
+// @Router /detail [get]
 func (s *ProductService) DetailProduct(c *gin.Context, query *IDQuery) {
 	product, err := s.productRepo.GetByID(query.ID)
 	if err != nil {
@@ -196,7 +196,7 @@ func (s *ProductService) DetailProduct(c *gin.Context, query *IDQuery) {
 		return
 	}
 
-	APIResult.Success(c, product.ToDetailAPI())
+	APIResult.Success(c, product.ToDetailAPI(&mid.CurrentUser.ID))
 }
 
 // UpdateProduct docs
@@ -289,7 +289,7 @@ func (s *ProductService) DeleteProduct(c *gin.Context, query *IDQuery) {
 // @Param bid_price body number true "BidPrice"
 // @Success 200 {object} app.Result{result=models.ProductBidder}
 // @Failure 400 {object} app.Result
-// @Router /bid [post] [auth]
+// @Router /bidder/add [post] [auth]
 func (s *ProductService) BidProduct(c *gin.Context, query *BidProductQuery) {
 	product, err1 := s.productRepo.GetByID(query.ProductID)
 	store, _ := s.storeRepo.GetByID(product.StoreID)
@@ -325,6 +325,34 @@ func (s *ProductService) BidProduct(c *gin.Context, query *BidProductQuery) {
 	}
 
 	APIResult.Success(c, bidder)
+}
+
+// ProductBidderList docs
+// @Tags ProductService
+// @Security bearerAuth
+// @Summary Endpoint untuk mendapatkan list product bidder
+// @Produce json
+// @Param product_id query int true "ProductID"
+// @Param limit query int true "Limit"
+// @Param offset query int true "Offset"
+// @Param query query string false "Query"
+// @Param filter query string false "Filter"
+// @Success 200 {object} app.Result{result=EntriesResult{entries=[]models.ProductBidder}}
+// @Failure 400 {object} app.Result
+// @Router /bidder/list [get] [auth]
+func (s *ProductService) ProductBidderList(c *gin.Context, query *QueryProducts) {
+	bidders, count, err := s.productRepo.GetBidderProduct(query.ProductID, query.Offset, query.Limit)
+	if err != nil {
+		APIResult.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	entries := []*models.ProductBidder{}
+	for _, item := range *bidders {
+		entries = append(entries, item.ToAPI())
+	}
+
+	APIResult.Success(c, EntriesResult{entries, count})
 }
 
 // ReOpenProductBid docs

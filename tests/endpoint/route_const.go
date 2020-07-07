@@ -26,7 +26,9 @@ const (
 	// DeleteProduct endpoint for testing only
 	DeleteProduct = "/product/v1/delete"
 	// BidProduct endpoint for testing only
-	BidProduct = "/product/v1/bid"
+	BidProduct = "/product/v1/bidder/add"
+	// ProductBidderList endpoint for testing only
+	ProductBidderList = "/product/v1/bidder/list"
 	// ReOpenProductBid endpoint for testing only
 	ReOpenProductBid = "/product/v1/reopen"
 	// MarkProductAsSold endpoint for testing only

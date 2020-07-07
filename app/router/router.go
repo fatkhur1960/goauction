@@ -95,7 +95,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 				}
 				productService.AddProduct(c, query.(*repo.NewProductQuery))
 			})
-			productServiceGroup.GET("/list", func(c *gin.Context) {
+			productServiceGroup.GET("/list", mid.RequiresUserAuth, func(c *gin.Context) {
 				productService.Lock()
 				defer productService.Unlock()
 				query, err := mid.ReqValidate(c, &service.QueryEntries{}, binding.Query)
@@ -113,7 +113,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 				}
 				productService.ListMyProduct(c, query.(*service.QueryEntries))
 			})
-			productServiceGroup.GET("/detail", mid.RequiresUserAuth, func(c *gin.Context) {
+			productServiceGroup.GET("/detail", func(c *gin.Context) {
 				productService.Lock()
 				defer productService.Unlock()
 				query, err := mid.ReqValidate(c, &service.IDQuery{}, binding.Query)
@@ -140,7 +140,7 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 				}
 				productService.DeleteProduct(c, query.(*service.IDQuery))
 			})
-			productServiceGroup.POST("/bid", mid.RequiresUserAuth, func(c *gin.Context) {
+			productServiceGroup.POST("/bidder/add", mid.RequiresUserAuth, func(c *gin.Context) {
 				productService.Lock()
 				defer productService.Unlock()
 				query, err := mid.ReqValidate(c, &service.BidProductQuery{}, binding.JSON)
@@ -148,6 +148,15 @@ func GetGeneratedRoutes(router *gin.Engine) *gin.Engine {
 					return
 				}
 				productService.BidProduct(c, query.(*service.BidProductQuery))
+			})
+			productServiceGroup.GET("/bidder/list", mid.RequiresUserAuth, func(c *gin.Context) {
+				productService.Lock()
+				defer productService.Unlock()
+				query, err := mid.ReqValidate(c, &service.QueryProducts{}, binding.Query)
+				if err != nil {
+					return
+				}
+				productService.ProductBidderList(c, query.(*service.QueryProducts))
 			})
 			productServiceGroup.POST("/reopen", mid.RequiresUserAuth, func(c *gin.Context) {
 				productService.Lock()

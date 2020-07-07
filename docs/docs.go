@@ -73,7 +73,7 @@ var doc = `{
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/models.User"
+                                            "$ref": "#/definitions/models.AccessToken"
                                         }
                                     }
                                 }
@@ -313,7 +313,7 @@ var doc = `{
                 }
             }
         },
-        "/bid": {
+        "/bidder/add": {
             "post": {
                 "security": [
                     {
@@ -363,6 +363,98 @@ var doc = `{
                                     "properties": {
                                         "result": {
                                             "$ref": "#/definitions/models.ProductBidder"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.Result"
+                        }
+                    }
+                }
+            }
+        },
+        "/bidder/list": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ProductService"
+                ],
+                "summary": "Endpoint untuk mendapatkan list product bidder",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ProductID",
+                        "name": "product_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Query",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/service.EntriesResult"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "entries": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/models.ProductBidder"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -631,22 +723,7 @@ var doc = `{
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "allOf": [
-                                                {
-                                                    "$ref": "#/definitions/service.EntriesResult"
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "entries": {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "$ref": "#/definitions/models.Product"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/types.ProductDetail"
                                         }
                                     }
                                 }
@@ -1754,7 +1831,7 @@ var doc = `{
                     "type": "integer"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "result": {
                     "type": "object"
@@ -1898,6 +1975,10 @@ var doc = `{
                 "product_id": {
                     "type": "integer"
                 },
+                "user": {
+                    "type": "object",
+                    "$ref": "#/definitions/models.UserSimple"
+                },
                 "user_id": {
                     "type": "integer"
                 },
@@ -1971,6 +2052,10 @@ var doc = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "owner": {
+                    "type": "object",
+                    "$ref": "#/definitions/models.UserSimple"
                 },
                 "owner_id": {
                     "type": "integer"
@@ -2059,6 +2144,23 @@ var doc = `{
                 }
             }
         },
+        "models.UserSimple": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
         "service.EntriesResult": {
             "type": "object",
             "properties": {
@@ -2137,6 +2239,56 @@ var doc = `{
                 },
                 "start_price": {
                     "type": "number"
+                }
+            }
+        },
+        "types.ProductDetail": {
+            "type": "object",
+            "properties": {
+                "bid_multpl": {
+                    "type": "number"
+                },
+                "bid_status": {
+                    "type": "object"
+                },
+                "closed": {
+                    "type": "boolean"
+                },
+                "closed_at": {
+                    "type": "string"
+                },
+                "condition": {
+                    "type": "integer"
+                },
+                "condition_avg": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "labels": {
+                    "type": "object"
+                },
+                "product_images": {
+                    "type": "object"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "sold": {
+                    "type": "boolean"
+                },
+                "start_price": {
+                    "type": "number"
+                },
+                "store": {
+                    "type": "object"
                 }
             }
         }
