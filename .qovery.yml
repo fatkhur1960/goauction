@@ -1,0 +1,15 @@
+---
+application:
+  name: "goauction"
+  project: "test-project-001"
+  organization: "QoveryCommunity"
+databases:
+- type: "POSTGRESQL"
+  name: "goauction_db"
+  version: "12"
+routers:
+- name: "main-goauction"
+  routes:
+  - application_name: "goauction"
+    paths:
+    - "/*"
